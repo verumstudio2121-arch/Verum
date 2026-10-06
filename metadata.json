@@ -1,0 +1,7 @@
+{
+  "name": "HiTech Clock",
+  "description": "A premium daily-use clock application inspired by modern iPhone-style system UI and the Liquid Glass aesthetic.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
