@@ -384,6 +384,7 @@ fun AlarmScreen(
         if (isCreatingAlarm) {
             CreateEditAlarmBottomSheet(
                 initialAlarm = null,
+                is24Hour = settings.clockFormat == "24 hour",
                 onSave = { newAlarm ->
                     repository.addAlarm(newAlarm)
                     isCreatingAlarm = false
@@ -396,6 +397,7 @@ fun AlarmScreen(
         editingAlarm?.let { alarm ->
             CreateEditAlarmBottomSheet(
                 initialAlarm = alarm,
+                is24Hour = settings.clockFormat == "24 hour",
                 onSave = { updated ->
                     repository.updateAlarm(updated)
                     editingAlarm = null

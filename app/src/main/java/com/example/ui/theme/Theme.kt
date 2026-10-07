@@ -48,7 +48,7 @@ private fun createHiTechLightColorScheme(accentColor: Color) = lightColorScheme(
 @Composable
 fun HiTechClockTheme(
     darkTheme: Boolean = true,
-    accentTheme: AccentColorTheme = AccentColorTheme.LIGHT_BLUE,
+    accentTheme: AccentTheme = AccentColorTheme.LIGHT_BLUE,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) {

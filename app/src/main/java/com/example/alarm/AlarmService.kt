@@ -103,7 +103,7 @@ class AlarmService : Service() {
         val volume = prefs.settings.value.alarmVolume
 
         // Start looping audio
-        SoundPlayer.startAlarmLoop(sound, volume)
+        SoundPlayer.startAlarmLoop(applicationContext, sound, volume)
 
         // Start looping vibration if enabled
         if (shouldVibrate && prefs.settings.value.vibrationEnabled) {

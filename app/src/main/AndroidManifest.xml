@@ -34,6 +34,51 @@
             </intent-filter>
         </activity>
 
+        <!-- Custom Gallery App Icon Activity Alias -->
+        <activity-alias
+            android:name=".MainActivityAliasCustom"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_custom"
+            android:roundIcon="@mipmap/ic_launcher_custom"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Cyber Neon App Icon Activity Alias -->
+        <activity-alias
+            android:name=".MainActivityAliasNeon"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_neon"
+            android:roundIcon="@mipmap/ic_launcher_neon"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Minimal App Icon Activity Alias -->
+        <activity-alias
+            android:name=".MainActivityAliasMinimal"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_minimal"
+            android:roundIcon="@mipmap/ic_launcher_minimal"
+            android:label="@string/app_name"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
         <activity
             android:name=".alarm.AlarmRingingActivity"
             android:exported="false"

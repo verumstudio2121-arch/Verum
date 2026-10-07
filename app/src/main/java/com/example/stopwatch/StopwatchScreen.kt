@@ -18,6 +18,12 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -37,7 +43,9 @@ import com.example.ui.theme.DeepBlack
 import com.example.ui.theme.GlassBorder
 import com.example.ui.theme.GlassBorderBright
 import com.example.ui.theme.GlassSurface
+import com.example.ui.theme.GlassSurfaceElevated
 import com.example.ui.theme.LiquidGlassCard
+import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -82,41 +90,32 @@ fun StopwatchScreen(
                     .padding(top = 16.dp, bottom = 24.dp)
             )
 
-            // Large Precision Monospace Time Display
-            Box(
+            // Interactive Hero Stopwatch Face (Toggles between Chronograph Dial and Digital Display on tap)
+            InteractiveStopwatchFace(
+                elapsedMillis = elapsedMillis,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 28.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = formattedDisplay,
-                    color = TextPrimary,
-                    fontSize = 64.sp,
-                    fontWeight = FontWeight.Light,
-                    fontFamily = FontFamily.Monospace,
-                    letterSpacing = (-1).sp
-                )
-            }
+                    .padding(vertical = 12.dp)
+            )
 
-            // Dual Tactile Glass Action Buttons
+            // Dual Tactile Glass Action Buttons (Matching reference video)
+            val accentColor = LocalAccentColor.current.primary
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp),
+                    .padding(vertical = 14.dp, horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left Button: LAP / RESET
+                // Left Button: LAP (Flag) / RESET (Refresh)
                 val canLapOrReset = elapsedMillis > 0
-                val leftButtonText = if (isRunning) "LAP" else "RESET"
 
                 Box(
                     modifier = Modifier
-                        .size(84.dp)
+                        .size(72.dp)
                         .clip(CircleShape)
                         .background(
-                            if (canLapOrReset) Color.White.copy(alpha = 0.12f) else GlassSurface
+                            if (canLapOrReset) GlassSurfaceElevated else GlassSurface
                         )
                         .border(
                             1.dp,
@@ -134,28 +133,37 @@ fun StopwatchScreen(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = leftButtonText,
-                        color = if (canLapOrReset) Color.White else TextTertiary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.5.sp
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isRunning) Icons.Default.Flag else Icons.Default.Refresh,
+                            contentDescription = if (isRunning) "Lap" else "Reset",
+                            tint = if (canLapOrReset) Color.White else TextTertiary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (isRunning) "Lap" else "Reset",
+                            color = if (canLapOrReset) Color.White else TextTertiary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
 
-                // Right Button: START / STOP
-                val isStop = isRunning
-                val rightButtonBg = if (isStop) AccentRed.copy(alpha = 0.22f) else AccentGreen.copy(alpha = 0.22f)
-                val rightButtonBorder = if (isStop) AccentRed.copy(alpha = 0.55f) else AccentGreen.copy(alpha = 0.55f)
-                val rightButtonText = if (isStop) "STOP" else "START"
-                val rightTextColor = if (isStop) AccentRed else AccentGreen
+                // Right Button: START (Play) / PAUSE (Pause)
+                val rightButtonBg = if (isRunning) accentColor.copy(alpha = 0.28f) else accentColor
+                val rightButtonBorder = if (isRunning) accentColor else accentColor.copy(alpha = 0.8f)
+                val rightIconTint = if (isRunning) accentColor else Color.White
 
                 Box(
                     modifier = Modifier
-                        .size(84.dp)
+                        .size(76.dp)
                         .clip(CircleShape)
                         .background(rightButtonBg)
-                        .border(1.dp, rightButtonBorder, CircleShape)
+                        .border(1.5.dp, rightButtonBorder, CircleShape)
                         .clickable {
                             if (isRunning) {
                                 haptic.buttonClick()
@@ -167,12 +175,11 @@ fun StopwatchScreen(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = rightButtonText,
-                        color = rightTextColor,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.5.sp
+                    Icon(
+                        imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isRunning) "Pause" else "Start",
+                        tint = rightIconTint,
+                        modifier = Modifier.size(36.dp)
                     )
                 }
             }

@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.clock.InteractiveHeroClock
 import com.example.data.AppSettings
 import com.example.ui.theme.AccentRed
 import com.example.ui.theme.DeepBlack
@@ -186,12 +187,21 @@ fun WorldClockScreen(
                 modifier = Modifier.padding(vertical = 12.dp)
             )
 
-            // Cities List
+            // Cities List with Hero Clock at Top
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                // Interactive Hero Analog / Digital Clock
+                item(key = "hero_clock") {
+                    InteractiveHeroClock(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp, bottom = 10.dp)
+                    )
+                }
+
                 itemsIndexed(userCities, key = { _, city -> city.id }) { index, city ->
                     // Read tick so recomposition occurs every second
                     val currentTick = tick

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Deep Obsidian Studio Canvas for Custom Gallery Artwork -->
+    <path
+        android:pathData="M41,23 L67,23 A18,18 0 0 1 85,41 L85,67 A18,18 0 0 1 67,85 L41,85 A18,18 0 0 1 23,67 L23,41 A18,18 0 0 1 41,23 Z"
+        android:strokeWidth="1.5">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="23"
+                android:startY="23"
+                android:endX="85"
+                android:endY="85"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#F0182438" />
+                <item android:offset="0.5" android:color="#F50C121E" />
+                <item android:offset="1.0" android:color="#FA04060A" />
+            </gradient>
+        </aapt:attr>
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="23"
+                android:startY="23"
+                android:endX="85"
+                android:endY="85"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFA78BFA" />
+                <item android:offset="0.5" android:color="#FF38BDF8" />
+                <item android:offset="1.0" android:color="#FF2DD4BF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Gallery Image Palette Center Emblem -->
+    <!-- Photo frame rectangle -->
+    <path
+        android:pathData="M39,37 L69,37 A3,3 0 0 1 72,40 L72,66 A3,3 0 0 1 69,69 L39,69 A3,3 0 0 1 36,66 L36,40 A3,3 0 0 1 39,37 Z"
+        android:fillColor="#15FFFFFF"
+        android:strokeColor="#9038BDF8"
+        android:strokeWidth="1.5" />
+
+    <!-- Mountain glyph -->
+    <path
+        android:pathData="M40,65 L49,53 L56,61 L61,56 L68,65 Z"
+        android:fillColor="#5038BDF8" />
+
+    <!-- Sun circle -->
+    <path
+        android:pathData="M61,44 A3,3 0 1,0 61,50 A3,3 0 1,0 61,44 Z"
+        android:fillColor="#FFA78BFA" />
+
+    <!-- Clock mini hand overlay badge -->
+    <path
+        android:pathData="M54,54 L54,47"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,54 L60,54"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round" />
+</vector>

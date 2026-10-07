@@ -148,7 +148,7 @@ class TimerViewModel(private val appContext: Context) : ViewModel() {
         cancelNotification()
         val prefs = PreferencesManager(appContext)
         val soundName = prefs.settings.value.timerSound
-        SoundPlayer.previewSound(soundName, 1.0f)
+        SoundPlayer.previewSound(appContext, soundName, 1.0f)
 
         // Vibrate
         try {

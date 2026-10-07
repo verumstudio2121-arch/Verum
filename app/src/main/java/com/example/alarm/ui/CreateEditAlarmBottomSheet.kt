@@ -1,5 +1,7 @@
 package com.example.alarm.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,9 +10,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,8 +23,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,9 +51,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.audio.CustomRingtone
+import com.example.audio.CustomRingtoneManager
 import com.example.audio.SoundPlayer
 import com.example.data.AlarmModel
 import com.example.ui.theme.AccentRed
@@ -69,6 +78,7 @@ import com.example.util.LocalHapticManager
 @Composable
 fun CreateEditAlarmBottomSheet(
     initialAlarm: AlarmModel? = null,
+    is24Hour: Boolean = false,
     onSave: (AlarmModel) -> Unit,
     onDelete: ((String) -> Unit)? = null,
     onDismiss: () -> Unit
@@ -76,6 +86,8 @@ fun CreateEditAlarmBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val haptic = LocalHapticManager.current
     val accentColor = LocalAccentColor.current.primary
+    val context = LocalContext.current
+    val ringtoneManager = remember { CustomRingtoneManager(context) }
 
     // Initial state
     val isEditing = initialAlarm != null
@@ -99,6 +111,25 @@ fun CreateEditAlarmBottomSheet(
     var snoozeEnabled by remember { mutableStateOf(initialAlarm?.snoozeEnabled ?: true) }
 
     var isPreviewPlaying by remember { mutableStateOf(false) }
+
+    // Custom ringtones list
+    var customRingtones by remember { mutableStateOf(ringtoneManager.getCustomRingtones()) }
+
+    // Audio file picker launcher
+    val audioPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            val imported = ringtoneManager.importRingtoneFromUri(uri)
+            if (imported != null) {
+                customRingtones = ringtoneManager.getCustomRingtones()
+                selectedSound = imported.name
+                SoundPlayer.previewSound(context, imported.name)
+                isPreviewPlaying = true
+                haptic.confirm()
+            }
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -129,251 +160,135 @@ fun CreateEditAlarmBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 36.dp)
-                .verticalScroll(rememberScrollState())
         ) {
-            // Header: Cancel / Title / Save
+            // Header: Cancel, Title, Done (Matching reference video)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Cancel
                 Text(
                     text = "Cancel",
                     color = TextSecondary,
                     fontSize = 16.sp,
-                    modifier = Modifier.clickable {
-                        SoundPlayer.stopPreview()
-                        haptic.buttonClick()
-                        onDismiss()
-                    }
+                    fontWeight = FontWeight.Normal,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            haptic.buttonClick()
+                            SoundPlayer.stopPreview()
+                            onDismiss()
+                        }
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
                 )
 
                 Text(
-                    text = if (isEditing) "Edit Alarm" else "Add Alarm",
+                    text = if (isEditing) "Edit alarm" else "New alarm",
                     color = TextPrimary,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
 
+                // Done
                 Text(
-                    text = "Save",
+                    text = "Done",
                     color = accentColor,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable {
-                        SoundPlayer.stopPreview()
-                        haptic.confirm()
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable {
+                            SoundPlayer.stopPreview()
+                            val actualHour = when {
+                                !isPm && displayHour == 12 -> 0
+                                !isPm -> displayHour
+                                isPm && displayHour == 12 -> 12
+                                else -> displayHour + 12
+                            }
 
-                        val final24Hour = when {
-                            !isPm && displayHour == 12 -> 0
-                            isPm && displayHour < 12 -> displayHour + 12
-                            else -> displayHour
+                            val finalAlarm = initialAlarm?.copy(
+                                hour = actualHour,
+                                minute = selectedMinute,
+                                label = label.trim().ifEmpty { "Alarm" },
+                                repeatType = repeatType,
+                                customDays = customDays,
+                                soundName = selectedSound,
+                                vibrate = vibrate,
+                                snoozeEnabled = snoozeEnabled
+                            ) ?: AlarmModel(
+                                hour = actualHour,
+                                minute = selectedMinute,
+                                label = label.trim().ifEmpty { "Alarm" },
+                                isEnabled = true,
+                                repeatType = repeatType,
+                                customDays = customDays,
+                                soundName = selectedSound,
+                                vibrate = vibrate,
+                                snoozeEnabled = snoozeEnabled
+                            )
+
+                            haptic.confirm()
+                            onSave(finalAlarm)
+                            onDismiss()
                         }
-
-                        val savedAlarm = AlarmModel(
-                            id = initialAlarm?.id ?: java.util.UUID.randomUUID().toString(),
-                            hour = final24Hour,
-                            minute = selectedMinute,
-                            label = label.ifBlank { "Alarm" },
-                            isEnabled = true,
-                            repeatType = repeatType,
-                            customDays = customDays,
-                            soundName = selectedSound,
-                            vibrate = vibrate,
-                            snoozeEnabled = snoozeEnabled
-                        )
-                        onSave(savedAlarm)
-                    }
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Liquid Glass Time Selector
-            LiquidGlassCard(
-                modifier = Modifier.fillMaxWidth(),
-                cornerRadius = 28.dp,
-                backgroundColor = GlassSurfaceElevated
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Hour selector with + / -
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(GlassSurface)
-                                .clickable {
-                                    haptic.sliderTick()
-                                    displayHour = if (displayHour == 12) 1 else displayHour + 1
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("▲", color = TextSecondary, fontSize = 12.sp)
-                        }
-
-                        Text(
-                            text = String.format("%02d", displayHour),
-                            color = TextPrimary,
-                            fontSize = 54.sp,
-                            fontWeight = FontWeight.Light,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(GlassSurface)
-                                .clickable {
-                                    haptic.sliderTick()
-                                    displayHour = if (displayHour == 1) 12 else displayHour - 1
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("▼", color = TextSecondary, fontSize = 12.sp)
-                        }
-                    }
-
-                    Text(
-                        text = ":",
-                        color = TextSecondary,
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.Light,
-                        modifier = Modifier.padding(horizontal = 14.dp)
-                    )
-
-                    // Minute selector with + / -
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(GlassSurface)
-                                .clickable {
-                                    haptic.sliderTick()
-                                    selectedMinute = (selectedMinute + 1) % 60
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("▲", color = TextSecondary, fontSize = 12.sp)
-                        }
-
-                        Text(
-                            text = String.format("%02d", selectedMinute),
-                            color = TextPrimary,
-                            fontSize = 54.sp,
-                            fontWeight = FontWeight.Light,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(GlassSurface)
-                                .clickable {
-                                    haptic.sliderTick()
-                                    selectedMinute = if (selectedMinute == 0) 59 else selectedMinute - 1
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("▼", color = TextSecondary, fontSize = 12.sp)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(20.dp))
-
-                    // AM / PM Toggle Capsule
-                    Column(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(GlassSurface)
-                            .border(1.dp, GlassBorder, CircleShape)
-                            .padding(4.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(if (!isPm) Color.White.copy(alpha = 0.28f) else Color.Transparent)
-                                .clickable {
-                                    haptic.toggle(false)
-                                    isPm = false
-                                }
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                text = "AM",
-                                color = if (!isPm) Color.White else TextTertiary,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(if (isPm) Color.White.copy(alpha = 0.28f) else Color.Transparent)
-                                .clickable {
-                                    haptic.toggle(true)
-                                    isPm = true
-                                }
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                text = "PM",
-                                color = if (isPm) Color.White else TextTertiary,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
-            }
+            // Dual-mode Scroller and Direct Type Alarm Time Picker
+            AlarmTimePickerScroller(
+                displayHour = displayHour,
+                minute = selectedMinute,
+                isPm = isPm,
+                is24Hour = is24Hour,
+                onHourChange = { displayHour = it },
+                onMinuteChange = { selectedMinute = it },
+                onAmPmChange = { isPm = it },
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Label Field
+            // Label Input
             Text("Label", color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(6.dp))
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },
+                singleLine = true,
+                placeholder = { Text("Alarm Label", color = TextTertiary) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = accentColor,
+                    unfocusedBorderColor = GlassBorder,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    focusedContainerColor = GlassSurface,
+                    unfocusedContainerColor = GlassSurface
+                ),
+                shape = RoundedCornerShape(18.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(GlassSurface),
-                placeholder = { Text("Alarm label (e.g. Wake Up, School, Workout)", color = TextTertiary) },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = GlassBorderBright,
-                    unfocusedBorderColor = GlassBorder,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    cursorColor = Color.White
-                ),
-                shape = RoundedCornerShape(18.dp)
+                    .testTag("alarm_label_input")
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Repeat Options
+            // Repeat Selector
             Text("Repeat", color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
+
             val repeatOptions = listOf("Once", "Every day", "Monday-Friday", "Saturday-Sunday", "Custom")
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 repeatOptions.forEach { opt ->
                     val isSelected = repeatType == opt
@@ -414,10 +329,10 @@ fun CreateEditAlarmBottomSheet(
                                 .clip(CircleShape)
                                 .background(if (isDaySelected) accentColor.copy(alpha = 0.35f) else GlassSurface)
                                 .border(1.dp, if (isDaySelected) accentColor else GlassBorder, CircleShape)
-                            .clickable {
-                                haptic.buttonClick()
-                                customDays = if (isDaySelected) customDays - dayNum else customDays + dayNum
-                            },
+                                .clickable {
+                                    haptic.buttonClick()
+                                    customDays = if (isDaySelected) customDays - dayNum else customDays + dayNum
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -433,56 +348,148 @@ fun CreateEditAlarmBottomSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Sound Selector & Preview
+            // Sound Selector & Preview & Custom Device Audio Button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Sound", color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                // Preview Button
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(GlassSurface)
-                        .border(1.dp, GlassBorder, CircleShape)
-                        .clickable {
-                            haptic.buttonClick()
-                            if (isPreviewPlaying) {
-                                SoundPlayer.stopPreview()
-                                isPreviewPlaying = false
-                            } else {
-                                isPreviewPlaying = true
-                                SoundPlayer.previewSound(selectedSound)
-                            }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Sound", color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    if (SoundPlayer.isCustomSound(context, selectedSound)) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(accentColor.copy(alpha = 0.2f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "CUSTOM",
+                                color = accentColor,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = if (isPreviewPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
-                            contentDescription = "Preview",
-                            tint = accentColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (isPreviewPlaying) "Stop" else "Preview",
-                            color = accentColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                    // Preview Button
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(GlassSurface)
+                            .border(1.dp, GlassBorder, CircleShape)
+                            .clickable {
+                                haptic.buttonClick()
+                                if (isPreviewPlaying) {
+                                    SoundPlayer.stopPreview()
+                                    isPreviewPlaying = false
+                                } else {
+                                    isPreviewPlaying = true
+                                    SoundPlayer.previewSound(context, selectedSound)
+                                }
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (isPreviewPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
+                                contentDescription = "Preview",
+                                tint = accentColor,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isPreviewPlaying) "Stop" else "Preview",
+                                color = accentColor,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    // Add Custom Ringtone Button (+)
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(accentColor.copy(alpha = 0.2f))
+                            .border(1.dp, accentColor.copy(alpha = 0.5f), CircleShape)
+                            .clickable {
+                                haptic.buttonClick()
+                                audioPickerLauncher.launch("audio/*")
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .testTag("add_custom_ringtone_button")
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add custom sound",
+                                tint = accentColor,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Add Ringtone",
+                                color = accentColor,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Sound pills row: Custom imported audio first, then presets
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Custom ringtones list
+                customRingtones.forEach { customTone ->
+                    val isSoundSelected = selectedSound == customTone.name || selectedSound == customTone.filePath
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(if (isSoundSelected) accentColor.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.08f))
+                            .border(1.dp, if (isSoundSelected) accentColor else GlassBorder, CircleShape)
+                            .clickable {
+                                haptic.buttonClick()
+                                selectedSound = customTone.name
+                                SoundPlayer.previewSound(context, customTone.name)
+                                isPreviewPlaying = true
+                            }
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.MusicNote,
+                                contentDescription = null,
+                                tint = if (isSoundSelected) Color.White else accentColor,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = customTone.name,
+                                color = if (isSoundSelected) Color.White else TextSecondary,
+                                fontSize = 13.sp,
+                                fontWeight = if (isSoundSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+
+                // Default built-in presets
                 SoundPlayer.AVAILABLE_SOUNDS.forEach { sound ->
                     val isSoundSelected = selectedSound == sound
                     Box(
@@ -493,7 +500,7 @@ fun CreateEditAlarmBottomSheet(
                             .clickable {
                                 haptic.buttonClick()
                                 selectedSound = sound
-                                SoundPlayer.previewSound(sound)
+                                SoundPlayer.previewSound(context, sound)
                                 isPreviewPlaying = true
                             }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
@@ -566,27 +573,86 @@ fun CreateEditAlarmBottomSheet(
                 )
             }
 
-            // Delete button when editing
-            if (isEditing && onDelete != null && initialAlarm != null) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(CircleShape)
-                        .background(AccentRed.copy(alpha = 0.15f))
-                        .border(1.dp, AccentRed.copy(alpha = 0.35f), CircleShape)
-                        .clickable {
-                            SoundPlayer.stopPreview()
-                            haptic.reject()
-                            onDelete(initialAlarm.id)
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // Action Buttons: Save & Optional Delete
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (isEditing && onDelete != null) {
+                    Box(
+                        modifier = Modifier
+                            .weight(0.35f)
+                            .height(54.dp)
+                            .clip(RoundedCornerShape(22.dp))
+                            .background(AccentRed.copy(alpha = 0.2f))
+                            .border(1.dp, AccentRed.copy(alpha = 0.4f), RoundedCornerShape(22.dp))
+                            .clickable {
+                                haptic.reject()
+                                SoundPlayer.stopPreview()
+                                onDelete(initialAlarm.id)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = AccentRed,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                LiquidGlassButton(
+                    modifier = Modifier.weight(1f).height(54.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    backgroundColor = accentColor.copy(alpha = 0.35f),
+                    borderColor = accentColor,
+                    onClick = {
+                        SoundPlayer.stopPreview()
+                        // Convert 12h display back to 24h
+                        val actualHour = when {
+                            !isPm && displayHour == 12 -> 0
+                            !isPm -> displayHour
+                            isPm && displayHour == 12 -> 12
+                            else -> displayHour + 12
                         }
-                        .padding(vertical = 14.dp),
-                    contentAlignment = Alignment.Center
+
+                        val finalAlarm = initialAlarm?.copy(
+                            hour = actualHour,
+                            minute = selectedMinute,
+                            label = label.trim().ifEmpty { "Alarm" },
+                            repeatType = repeatType,
+                            customDays = customDays,
+                            soundName = selectedSound,
+                            vibrate = vibrate,
+                            snoozeEnabled = snoozeEnabled
+                        ) ?: AlarmModel(
+                            hour = actualHour,
+                            minute = selectedMinute,
+                            label = label.trim().ifEmpty { "Alarm" },
+                            isEnabled = true,
+                            repeatType = repeatType,
+                            customDays = customDays,
+                            soundName = selectedSound,
+                            vibrate = vibrate,
+                            snoozeEnabled = snoozeEnabled
+                        )
+
+                        onSave(finalAlarm)
+                    }
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = AccentRed, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Delete Alarm", color = AccentRed, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isEditing) "Save Changes" else "Create Alarm",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }

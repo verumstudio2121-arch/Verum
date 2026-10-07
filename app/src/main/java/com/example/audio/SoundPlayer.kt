@@ -1,14 +1,18 @@
 package com.example.audio
 
+import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.media.MediaPlayer
+import android.net.Uri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.File
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.sin
@@ -25,6 +29,8 @@ object SoundPlayer {
 
     private var previewJob: Job? = null
     private var activeTrack: AudioTrack? = null
+    private var previewMediaPlayer: MediaPlayer? = null
+    private var alarmMediaPlayer: MediaPlayer? = null
     private var isAlarmLooping = false
     private var alarmLoopJob: Job? = null
 
@@ -45,7 +51,6 @@ object SoundPlayer {
     }
 
     private fun generateClassicAlarm(sampleRate: Int): ShortArray {
-        // High-tech dual-tone beep beep (0.75 second pattern)
         val duration = (0.75 * sampleRate).toInt()
         val buffer = ShortArray(duration)
         val f1 = 880.0
@@ -68,7 +73,6 @@ object SoundPlayer {
     }
 
     private fun generateGentleChime(sampleRate: Int): ShortArray {
-        // Warm harmonic ascending arpeggio C5 (523Hz), E5 (659Hz), G5 (784Hz), B5 (987Hz)
         val duration = (1.8 * sampleRate).toInt()
         val buffer = ShortArray(duration)
         val notes = doubleArrayOf(523.25, 659.25, 783.99, 987.77)
@@ -83,7 +87,6 @@ object SoundPlayer {
                     val dt = t - start
                     val decay = exp(-dt * 3.5)
                     sample += sin(2.0 * PI * freq * dt) * decay * 0.45
-                    // Add subtle 2nd harmonic
                     sample += sin(2.0 * PI * freq * 2.0 * dt) * decay * 0.15
                 }
             }
@@ -93,7 +96,6 @@ object SoundPlayer {
     }
 
     private fun generateDigitalPulse(sampleRate: Int): ShortArray {
-        // Futuristic cyber pulse sequence (1.0 sec)
         val duration = (1.0 * sampleRate).toInt()
         val buffer = ShortArray(duration)
         val freqs = doubleArrayOf(1046.5, 1318.5, 1567.98, 2093.0)
@@ -111,10 +113,9 @@ object SoundPlayer {
     }
 
     private fun generateWakeUpMelody(sampleRate: Int): ShortArray {
-        // Uplifting melody (1.5 sec)
         val duration = (1.6 * sampleRate).toInt()
         val buffer = ShortArray(duration)
-        val notes = doubleArrayOf(587.33, 739.99, 880.0, 1174.66) // D5, F#5, A5, D6
+        val notes = doubleArrayOf(587.33, 739.99, 880.0, 1174.66)
         val noteInterval = 0.28
 
         for (i in 0 until duration) {
@@ -134,10 +135,9 @@ object SoundPlayer {
     }
 
     private fun generateBellTone(sampleRate: Int): ShortArray {
-        // Resonant acoustic bell (1.8 sec)
         val duration = (1.8 * sampleRate).toInt()
         val buffer = ShortArray(duration)
-        val baseFreq = 659.25 // E5
+        val baseFreq = 659.25
 
         for (i in 0 until duration) {
             val t = i.toDouble() / sampleRate
@@ -152,14 +152,13 @@ object SoundPlayer {
     }
 
     private fun generatePulsingAlert(sampleRate: Int): ShortArray {
-        // Rhythmic pulsing heartbeat alert (1.0 sec)
         val duration = (1.0 * sampleRate).toInt()
         val buffer = ShortArray(duration)
         val freq = 480.0
 
         for (i in 0 until duration) {
             val t = i.toDouble() / sampleRate
-            val mod = (0.5 * (1.0 + sin(2.0 * PI * 4.0 * t))) // 4Hz pulse modulation
+            val mod = (0.5 * (1.0 + sin(2.0 * PI * 4.0 * t)))
             val wave = sin(2.0 * PI * freq * t)
             buffer[i] = (wave * mod * 25000).toInt().coerceIn(-32767, 32767).toShort()
         }
@@ -167,10 +166,32 @@ object SoundPlayer {
     }
 
     /**
-     * Previews the selected sound for ~2 seconds then stops.
+     * Resolves whether a sound represents a custom file path or custom ringtone.
      */
-    fun previewSound(soundName: String, volume: Float = 1.0f) {
+    fun isCustomSound(context: Context?, soundName: String): Boolean {
+        if (soundName.startsWith("/") || soundName.startsWith("file://") || soundName.startsWith("content://")) {
+            return true
+        }
+        if (context != null) {
+            val ringtone = CustomRingtoneManager(context).findRingtone(soundName)
+            if (ringtone != null) return true
+        }
+        return false
+    }
+
+    /**
+     * Previews the selected sound (synthesized preset or custom file) for ~4 seconds.
+     */
+    fun previewSound(context: Context? = null, soundName: String, volume: Float = 1.0f) {
         stopPreview()
+
+        // Check if custom ringtone audio file
+        val customFile = resolveCustomAudioFile(context, soundName)
+        if (customFile != null && customFile.exists()) {
+            previewCustomAudioFile(customFile, volume)
+            return
+        }
+
         previewJob = CoroutineScope(Dispatchers.IO).launch {
             try {
                 val sampleRate = 44100
@@ -208,17 +229,53 @@ object SoundPlayer {
         }
     }
 
+    private fun previewCustomAudioFile(file: File, volume: Float) {
+        try {
+            val mp = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                setDataSource(file.absolutePath)
+                setVolume(volume.coerceIn(0f, 1f), volume.coerceIn(0f, 1f))
+                prepare()
+                start()
+            }
+            previewMediaPlayer = mp
+
+            previewJob = CoroutineScope(Dispatchers.IO).launch {
+                delay(4000)
+                stopPreview()
+            }
+        } catch (_: Exception) {}
+    }
+
     fun stopPreview() {
         previewJob?.cancel()
         previewJob = null
+
+        try {
+            previewMediaPlayer?.stop()
+            previewMediaPlayer?.release()
+        } catch (_: Exception) {}
+        previewMediaPlayer = null
     }
 
     /**
      * Starts looping alarm sound for continuous ringing in AlarmService.
+     * Supports both synthesized presets and custom ringtone files.
      */
-    fun startAlarmLoop(soundName: String, volume: Float = 1.0f) {
+    fun startAlarmLoop(context: Context? = null, soundName: String, volume: Float = 1.0f) {
         stopAlarmLoop()
         isAlarmLooping = true
+
+        val customFile = resolveCustomAudioFile(context, soundName)
+        if (customFile != null && customFile.exists()) {
+            startCustomAlarmLoop(customFile, volume)
+            return
+        }
 
         alarmLoopJob = CoroutineScope(Dispatchers.IO).launch {
             val sampleRate = 44100
@@ -246,7 +303,7 @@ object SoundPlayer {
 
                 activeTrack = track
                 track.write(samples, 0, samples.size)
-                track.setLoopPoints(0, samples.size, -1) // Loop infinitely
+                track.setLoopPoints(0, samples.size, -1)
                 track.setVolume(volume.coerceIn(0f, 1f))
                 track.play()
 
@@ -264,14 +321,57 @@ object SoundPlayer {
         }
     }
 
+    private fun startCustomAlarmLoop(file: File, volume: Float) {
+        try {
+            val mp = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                setDataSource(file.absolutePath)
+                isLooping = true
+                setVolume(volume.coerceIn(0f, 1f), volume.coerceIn(0f, 1f))
+                prepare()
+                start()
+            }
+            alarmMediaPlayer = mp
+        } catch (e: Exception) {
+            // Fallback to synthesized gentle chime if playback fails
+            startAlarmLoop(null, "Gentle", volume)
+        }
+    }
+
     fun stopAlarmLoop() {
         isAlarmLooping = false
         alarmLoopJob?.cancel()
         alarmLoopJob = null
+
         try {
             activeTrack?.stop()
             activeTrack?.release()
         } catch (_: Exception) {}
         activeTrack = null
+
+        try {
+            alarmMediaPlayer?.stop()
+            alarmMediaPlayer?.release()
+        } catch (_: Exception) {}
+        alarmMediaPlayer = null
+    }
+
+    private fun resolveCustomAudioFile(context: Context?, soundName: String): File? {
+        val directFile = File(soundName)
+        if (directFile.exists()) return directFile
+
+        if (context != null) {
+            val ringtone = CustomRingtoneManager(context).findRingtone(soundName)
+            if (ringtone != null) {
+                val f = File(ringtone.filePath)
+                if (f.exists()) return f
+            }
+        }
+        return null
     }
 }

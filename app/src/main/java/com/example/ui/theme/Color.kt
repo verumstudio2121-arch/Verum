@@ -8,15 +8,15 @@ val DeepBlack = Color(0xFF000000)
 val ObsidianBlack = Color(0xFF08080C)
 val CharcoalGlass = Color(0xFF121218)
 
-// Liquid Glass surfaces
-val GlassSurface = Color(0x17FFFFFF)
-val GlassSurfaceElevated = Color(0x22FFFFFF)
-val GlassSurfaceSubtle = Color(0x0EFFFFFF)
-val GlassSelectedCapsule = Color(0x2EFFFFFF)
+// Liquid Glass surfaces (iOS style Black #000000 at 20-30% opacity)
+val GlassSurface = Color(0x3D000000)          // Black at ~24% opacity
+val GlassSurfaceElevated = Color(0x48000000)  // Black at ~28% opacity
+val GlassSurfaceSubtle = Color(0x33000000)    // Black at ~20% opacity
+val GlassSelectedCapsule = Color(0x4D000000)  // Black at ~30% opacity
 
-// Borders & Reflections
-val GlassBorder = Color(0x24FFFFFF)
-val GlassBorderBright = Color(0x4DFFFFFF)
+// Borders & Reflections (1px White #FFFFFF line at 15-20% opacity)
+val GlassBorder = Color(0x2EFFFFFF)           // White at ~18% opacity (15-20% spec)
+val GlassBorderBright = Color(0x4DFFFFFF)     // White at ~30% opacity for active/elevated
 val GlassHighlight = Color(0x2BFFFFFF)
 
 // Accents
@@ -27,15 +27,34 @@ val AccentRed = Color(0xFFFF453A)
 val AccentViolet = Color(0xFFA78BFA)
 
 /**
+ * Liquid Glass dynamic accent color contract.
+ */
+interface AccentTheme {
+    val id: String
+    val displayName: String
+    val primary: Color
+    val light: Color
+    val dark: Color
+}
+
+data class DynamicAccentColor(
+    override val id: String,
+    override val displayName: String,
+    override val primary: Color,
+    override val light: Color,
+    override val dark: Color
+) : AccentTheme
+
+/**
  * Liquid Glass dynamic accent color options.
  */
 enum class AccentColorTheme(
-    val id: String,
-    val displayName: String,
-    val primary: Color,
-    val light: Color,
-    val dark: Color
-) {
+    override val id: String,
+    override val displayName: String,
+    override val primary: Color,
+    override val light: Color,
+    override val dark: Color
+) : AccentTheme {
     LIGHT_BLUE(
         id = "Light Blue",
         displayName = "Light Blue",
@@ -66,15 +85,55 @@ enum class AccentColorTheme(
     );
 
     companion object {
-        fun fromId(id: String?): AccentColorTheme {
-            return entries.firstOrNull { it.id.equals(id, ignoreCase = true) } ?: LIGHT_BLUE
+        fun fromId(id: String?): AccentTheme {
+            if (id == null) return LIGHT_BLUE
+            val preset = entries.firstOrNull { it.id.equals(id, ignoreCase = true) }
+            if (preset != null) return preset
+
+            // If it's a custom hex color like "#FF5722" or "CUSTOM_#FF5722"
+            if (id.startsWith("#") || id.startsWith("CUSTOM_#")) {
+                try {
+                    val hex = if (id.startsWith("CUSTOM_#")) id.removePrefix("CUSTOM_") else id
+                    val parsedInt = android.graphics.Color.parseColor(hex)
+                    val parsedColor = Color(parsedInt)
+                    // Synthesize dynamic light/dark shades
+                    val hsv = FloatArray(3)
+                    android.graphics.Color.colorToHSV(parsedInt, hsv)
+
+                    val lightHsv = floatArrayOf(
+                        hsv[0],
+                        (hsv[1] * 0.65f).coerceIn(0f, 1f),
+                        (hsv[2] * 1.15f).coerceIn(0f, 1f)
+                    )
+                    val darkHsv = floatArrayOf(
+                        hsv[0],
+                        (hsv[1] * 1.25f).coerceIn(0f, 1f),
+                        (hsv[2] * 0.75f).coerceIn(0f, 1f)
+                    )
+
+                    val lightColor = Color(android.graphics.Color.HSVToColor(lightHsv))
+                    val darkColor = Color(android.graphics.Color.HSVToColor(darkHsv))
+
+                    return DynamicAccentColor(
+                        id = id,
+                        displayName = "Custom",
+                        primary = parsedColor,
+                        light = lightColor,
+                        dark = darkColor
+                    )
+                } catch (_: Exception) {
+                    return LIGHT_BLUE
+                }
+            }
+
+            return LIGHT_BLUE
         }
     }
 }
 
-val LocalAccentColor = staticCompositionLocalOf { AccentColorTheme.LIGHT_BLUE }
+val LocalAccentColor = staticCompositionLocalOf<AccentTheme> { AccentColorTheme.LIGHT_BLUE }
 
-val LocalAccent: AccentColorTheme
+val LocalAccent: AccentTheme
     @Composable
     get() = LocalAccentColor.current
 
