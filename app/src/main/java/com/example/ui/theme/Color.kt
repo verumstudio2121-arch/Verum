@@ -8,15 +8,15 @@ val DeepBlack = Color(0xFF000000)
 val ObsidianBlack = Color(0xFF08080C)
 val CharcoalGlass = Color(0xFF121218)
 
-// Liquid Glass surfaces (iOS style Black #000000 at 20-30% opacity)
-val GlassSurface = Color(0x3D000000)          // Black at ~24% opacity
-val GlassSurfaceElevated = Color(0x48000000)  // Black at ~28% opacity
-val GlassSurfaceSubtle = Color(0x33000000)    // Black at ~20% opacity
-val GlassSelectedCapsule = Color(0x4D000000)  // Black at ~30% opacity
+// Liquid Glass surfaces
+val GlassSurface = Color(0x17FFFFFF)
+val GlassSurfaceElevated = Color(0x22FFFFFF)
+val GlassSurfaceSubtle = Color(0x0EFFFFFF)
+val GlassSelectedCapsule = Color(0x2EFFFFFF)
 
-// Borders & Reflections (1px White #FFFFFF line at 15-20% opacity)
-val GlassBorder = Color(0x2EFFFFFF)           // White at ~18% opacity (15-20% spec)
-val GlassBorderBright = Color(0x4DFFFFFF)     // White at ~30% opacity for active/elevated
+// Borders & Reflections
+val GlassBorder = Color(0x24FFFFFF)
+val GlassBorderBright = Color(0x4DFFFFFF)
 val GlassHighlight = Color(0x2BFFFFFF)
 
 // Accents

@@ -84,74 +84,15 @@ import kotlin.math.roundToInt
  * 4. Specular liquid reflection gradient sheen ([specularHighlight])
  * 5. Refined thin translucent border ([borderWidth], [borderColor] or [borderBrush])
  */
-/**
- * Reusable Modifier extension for the iOS-style Liquid Glass glassmorphism effect.
- *
- * Spec:
- * - Background: Black #000000 at 20–30% Opacity
- * - Blur: Gaussian/Background Blur set to 40–80 (default 50.dp)
- * - Border: 1px White #FFFFFF line at 15–20% Opacity
- * - Corners: Corner radius at 28–36px (default 32.dp)
- * - Shadow: Black outer shadow with 20 Blur / 10 Distance at 25% Opacity
- * - Soft Glow: Soft subtle liquid glow around perimeter catching light
- */
 fun Modifier.liquidGlass(
-    shape: Shape = RoundedCornerShape(32.dp),
+    shape: Shape = RoundedCornerShape(24.dp),
     backgroundColor: Color = GlassSurface,
     borderColor: Color = GlassBorder,
     borderWidth: Dp = 1.dp,
-    blurRadius: Dp = 50.dp,
+    blurRadius: Dp = 16.dp,
     specularHighlight: Boolean = true,
-    specularAlpha: Float = 0.14f,
-    showOuterShadow: Boolean = true,
-    outerShadowColor: Color = Color.Black.copy(alpha = 0.25f),
-    outerShadowBlur: Dp = 20.dp,
-    outerShadowDistance: Dp = 10.dp,
-    showSoftGlow: Boolean = true,
-    softGlowColor: Color = Color.White.copy(alpha = 0.08f)
+    specularAlpha: Float = 0.12f
 ): Modifier = this
-    .then(
-        if (showOuterShadow || showSoftGlow) {
-            Modifier.drawBehind {
-                // Soft ambient glow surrounding outer edges
-                if (showSoftGlow) {
-                    val glowPadding = 6.dp.toPx()
-                    drawRoundRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                softGlowColor,
-                                softGlowColor.copy(alpha = softGlowColor.alpha * 0.4f),
-                                Color.Transparent
-                            ),
-                            center = center,
-                            radius = (size.width.coerceAtLeast(size.height) / 2f) + glowPadding * 2f
-                        ),
-                        cornerRadius = CornerRadius(32.dp.toPx(), 32.dp.toPx())
-                    )
-                }
-
-                // Black outer shadow with 20 Blur / 10 Distance at 25% Opacity
-                if (showOuterShadow) {
-                    val offsetY = outerShadowDistance.toPx()
-                    val blurPx = outerShadowBlur.toPx()
-                    drawRoundRect(
-                        brush = Brush.verticalGradient(
-                            0.0f to Color.Transparent,
-                            0.35f to outerShadowColor.copy(alpha = outerShadowColor.alpha * 0.4f),
-                            1.0f to outerShadowColor,
-                            startY = size.height * 0.2f,
-                            endY = size.height + offsetY + blurPx
-                        ),
-                        topLeft = Offset(0f, offsetY * 0.5f),
-                        size = androidx.compose.ui.geometry.Size(size.width, size.height + offsetY),
-                        cornerRadius = CornerRadius(32.dp.toPx(), 32.dp.toPx())
-                    )
-                }
-            }
-        } else {
-            Modifier
-        }
-    )
     .clip(shape)
     .then(
         if (blurRadius > 0.dp) {
@@ -185,59 +126,14 @@ fun Modifier.liquidGlass(
  * Liquid Glass modifier overload accepting a custom [borderBrush] for dynamic light reflections.
  */
 fun Modifier.liquidGlass(
-    shape: Shape = RoundedCornerShape(32.dp),
+    shape: Shape = RoundedCornerShape(24.dp),
     backgroundColor: Color = GlassSurface,
     borderBrush: Brush,
     borderWidth: Dp = 1.dp,
-    blurRadius: Dp = 50.dp,
+    blurRadius: Dp = 16.dp,
     specularHighlight: Boolean = true,
-    specularAlpha: Float = 0.14f,
-    showOuterShadow: Boolean = true,
-    outerShadowColor: Color = Color.Black.copy(alpha = 0.25f),
-    outerShadowBlur: Dp = 20.dp,
-    outerShadowDistance: Dp = 10.dp,
-    showSoftGlow: Boolean = true,
-    softGlowColor: Color = Color.White.copy(alpha = 0.08f)
+    specularAlpha: Float = 0.12f
 ): Modifier = this
-    .then(
-        if (showOuterShadow || showSoftGlow) {
-            Modifier.drawBehind {
-                if (showSoftGlow) {
-                    val glowPadding = 6.dp.toPx()
-                    drawRoundRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                softGlowColor,
-                                softGlowColor.copy(alpha = softGlowColor.alpha * 0.4f),
-                                Color.Transparent
-                            ),
-                            center = center,
-                            radius = (size.width.coerceAtLeast(size.height) / 2f) + glowPadding * 2f
-                        ),
-                        cornerRadius = CornerRadius(32.dp.toPx(), 32.dp.toPx())
-                    )
-                }
-                if (showOuterShadow) {
-                    val offsetY = outerShadowDistance.toPx()
-                    val blurPx = outerShadowBlur.toPx()
-                    drawRoundRect(
-                        brush = Brush.verticalGradient(
-                            0.0f to Color.Transparent,
-                            0.35f to outerShadowColor.copy(alpha = outerShadowColor.alpha * 0.4f),
-                            1.0f to outerShadowColor,
-                            startY = size.height * 0.2f,
-                            endY = size.height + offsetY + blurPx
-                        ),
-                        topLeft = Offset(0f, offsetY * 0.5f),
-                        size = androidx.compose.ui.geometry.Size(size.width, size.height + offsetY),
-                        cornerRadius = CornerRadius(32.dp.toPx(), 32.dp.toPx())
-                    )
-                }
-            }
-        } else {
-            Modifier
-        }
-    )
     .clip(shape)
     .then(
         if (blurRadius > 0.dp) {
@@ -272,11 +168,11 @@ fun Modifier.liquidGlass(
  * (e.g., floating panels, active cards, bottom sheets).
  */
 fun Modifier.liquidGlassElevated(
-    shape: Shape = RoundedCornerShape(32.dp),
+    shape: Shape = RoundedCornerShape(28.dp),
     backgroundColor: Color = GlassSurfaceElevated,
     borderColor: Color = GlassBorderBright,
     borderWidth: Dp = 1.dp,
-    blurRadius: Dp = 60.dp,
+    blurRadius: Dp = 20.dp,
     specularHighlight: Boolean = true
 ): Modifier = liquidGlass(
     shape = shape,
@@ -285,18 +181,18 @@ fun Modifier.liquidGlassElevated(
     borderWidth = borderWidth,
     blurRadius = blurRadius,
     specularHighlight = specularHighlight,
-    specularAlpha = 0.20f
+    specularAlpha = 0.18f
 )
 
 /**
  * Semantic alias for [liquidGlass] matching the glassmorphism aesthetic.
  */
 fun Modifier.glassmorphism(
-    shape: Shape = RoundedCornerShape(32.dp),
+    shape: Shape = RoundedCornerShape(24.dp),
     backgroundColor: Color = GlassSurface,
     borderColor: Color = GlassBorder,
     borderWidth: Dp = 1.dp,
-    blurRadius: Dp = 50.dp,
+    blurRadius: Dp = 16.dp,
     specularHighlight: Boolean = true
 ): Modifier = liquidGlass(
     shape = shape,
@@ -309,67 +205,22 @@ fun Modifier.glassmorphism(
 
 /**
  * Container composable for a Liquid Glass surface with an isolated blurred background layer,
- * outer shadow, soft glow, and refined border, ensuring foreground children remain crisp.
+ * ensuring foreground children (such as text, numbers, and icons) remain ultra-sharp and legible.
  */
 @Composable
 fun LiquidGlassBox(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(32.dp),
+    shape: Shape = RoundedCornerShape(24.dp),
     backgroundColor: Color = GlassSurface,
     borderColor: Color = GlassBorder,
     borderWidth: Dp = 1.dp,
-    blurRadius: Dp = 50.dp,
+    blurRadius: Dp = 16.dp,
     specularHighlight: Boolean = true,
-    showOuterShadow: Boolean = true,
-    outerShadowColor: Color = Color.Black.copy(alpha = 0.25f),
-    outerShadowBlur: Dp = 20.dp,
-    outerShadowDistance: Dp = 10.dp,
-    showSoftGlow: Boolean = true,
-    softGlowColor: Color = Color.White.copy(alpha = 0.08f),
     contentAlignment: Alignment = Alignment.TopStart,
     content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit
 ) {
     Box(
         modifier = modifier
-            .then(
-                if (showOuterShadow || showSoftGlow) {
-                    Modifier.drawBehind {
-                        if (showSoftGlow) {
-                            val glowPadding = 6.dp.toPx()
-                            drawRoundRect(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        softGlowColor,
-                                        softGlowColor.copy(alpha = softGlowColor.alpha * 0.4f),
-                                        Color.Transparent
-                                    ),
-                                    center = center,
-                                    radius = (size.width.coerceAtLeast(size.height) / 2f) + glowPadding * 2f
-                                ),
-                                cornerRadius = CornerRadius(32.dp.toPx(), 32.dp.toPx())
-                            )
-                        }
-                        if (showOuterShadow) {
-                            val offsetY = outerShadowDistance.toPx()
-                            val blurPx = outerShadowBlur.toPx()
-                            drawRoundRect(
-                                brush = Brush.verticalGradient(
-                                    0.0f to Color.Transparent,
-                                    0.35f to outerShadowColor.copy(alpha = outerShadowColor.alpha * 0.4f),
-                                    1.0f to outerShadowColor,
-                                    startY = size.height * 0.2f,
-                                    endY = size.height + offsetY + blurPx
-                                ),
-                                topLeft = Offset(0f, offsetY * 0.5f),
-                                size = androidx.compose.ui.geometry.Size(size.width, size.height + offsetY),
-                                cornerRadius = CornerRadius(32.dp.toPx(), 32.dp.toPx())
-                            )
-                        }
-                    }
-                } else {
-                    Modifier
-                }
-            )
             .clip(shape)
             .border(borderWidth, borderColor, shape),
         contentAlignment = contentAlignment
@@ -391,8 +242,8 @@ fun LiquidGlassBox(
                         Modifier.drawBehind {
                             drawRect(
                                 brush = Brush.verticalGradient(
-                                    0.0f to Color.White.copy(alpha = 0.14f),
-                                    0.35f to Color.White.copy(alpha = 0.05f),
+                                    0.0f to Color.White.copy(alpha = 0.12f),
+                                    0.35f to Color.White.copy(alpha = 0.04f),
                                     1.0f to Color.Transparent
                                 )
                             )
@@ -408,38 +259,28 @@ fun LiquidGlassBox(
 }
 
 /**
- * Reusable GlassCard composable providing the signature iOS Liquid Glass visual effect:
- * - Background: Black #000000 at 20–30% Opacity
- * - Blur: Gaussian/Background Blur set to 40–80 (default 50.dp)
- * - Border: 1px White #FFFFFF line at 15–20% Opacity
- * - Corners: Corner radius at 28–36px (default 32.dp)
- * - Shadow: Black outer shadow with 20 Blur / 10 Distance at 25% Opacity
- * - Soft Glow: Radiant optical luminescence
- * - Specular liquid sheen + subtle inner refraction bevel
- * - Spring-interactive click feedback with tactile haptics
+ * Reusable GlassCard composable providing the signature Liquid Glass visual effect:
+ * - Semi-transparent surfaces with subtle depth and specular reflection
+ * - Subtle borders that catch overhead light
+ * - Soft inner shadows simulating optical refraction and plate beveling
+ * - Optional spring-interactive click feedback with tactile haptics
  */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    cornerRadius: Dp = 32.dp,
+    cornerRadius: Dp = 24.dp,
     shape: Shape = RoundedCornerShape(cornerRadius),
     backgroundColor: Color = GlassSurface,
     backgroundBrush: Brush? = null,
     borderColor: Color = GlassBorder,
     borderBrush: Brush? = null,
     borderWidth: Dp = 1.dp,
-    blurRadius: Dp = 50.dp,
-    showOuterShadow: Boolean = true,
-    outerShadowColor: Color = Color.Black.copy(alpha = 0.25f),
-    outerShadowBlur: Dp = 20.dp,
-    outerShadowDistance: Dp = 10.dp,
-    showSoftGlow: Boolean = true,
-    softGlowColor: Color = Color.White.copy(alpha = 0.08f),
-    innerShadowColor: Color = Color.Black.copy(alpha = 0.30f),
-    innerShadowBlur: Dp = 14.dp,
+    blurRadius: Dp = 0.dp,
+    innerShadowColor: Color = Color.Black.copy(alpha = 0.35f),
+    innerShadowBlur: Dp = 16.dp,
     showInnerShadow: Boolean = true,
     specularHighlight: Boolean = true,
-    specularAlpha: Float = 0.14f,
+    specularAlpha: Float = 0.12f,
     contentPadding: PaddingValues = PaddingValues(18.dp),
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
@@ -461,9 +302,9 @@ fun GlassCard(
         if (borderColor == GlassBorder) {
             Brush.verticalGradient(
                 listOf(
-                    Color.White.copy(alpha = 0.28f),
-                    Color.White.copy(alpha = 0.18f),
-                    Color.White.copy(alpha = 0.12f)
+                    Color.White.copy(alpha = 0.32f),
+                    Color.White.copy(alpha = 0.16f),
+                    Color.White.copy(alpha = 0.08f)
                 )
             )
         } else {
@@ -487,50 +328,6 @@ fun GlassCard(
     Box(
         modifier = modifier
             .scale(scale)
-            .then(
-                if (showOuterShadow || showSoftGlow) {
-                    Modifier.drawBehind {
-                        val crPx = cornerRadius.toPx()
-
-                        // 1. Soft Glow around edges
-                        if (showSoftGlow) {
-                            val glowPadding = 6.dp.toPx()
-                            drawRoundRect(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        softGlowColor,
-                                        softGlowColor.copy(alpha = softGlowColor.alpha * 0.4f),
-                                        Color.Transparent
-                                    ),
-                                    center = center,
-                                    radius = (size.width.coerceAtLeast(size.height) / 2f) + glowPadding * 2f
-                                ),
-                                cornerRadius = CornerRadius(crPx, crPx)
-                            )
-                        }
-
-                        // 2. Black outer shadow with 20 Blur / 10 Distance at 25% Opacity
-                        if (showOuterShadow) {
-                            val offsetY = outerShadowDistance.toPx()
-                            val blurPx = outerShadowBlur.toPx()
-                            drawRoundRect(
-                                brush = Brush.verticalGradient(
-                                    0.0f to Color.Transparent,
-                                    0.30f to outerShadowColor.copy(alpha = outerShadowColor.alpha * 0.35f),
-                                    1.0f to outerShadowColor,
-                                    startY = size.height * 0.2f,
-                                    endY = size.height + offsetY + blurPx
-                                ),
-                                topLeft = Offset(0f, offsetY * 0.5f),
-                                size = androidx.compose.ui.geometry.Size(size.width, size.height + offsetY),
-                                cornerRadius = CornerRadius(crPx, crPx)
-                            )
-                        }
-                    }
-                } else {
-                    Modifier
-                }
-            )
             .clip(shape)
             .then(
                 if (blurRadius > 0.dp) {
@@ -540,14 +337,14 @@ fun GlassCard(
                 }
             )
             .drawBehind {
-                // Surface background (Black 20-30% opacity)
+                // 1. Semi-transparent surface background
                 if (backgroundBrush != null) {
                     drawRect(brush = backgroundBrush)
                 } else {
                     drawRect(color = backgroundColor)
                 }
 
-                // Specular reflection highlight sheen
+                // 2. Specular reflection highlight sheen
                 if (specularHighlight) {
                     drawRect(
                         brush = Brush.verticalGradient(
@@ -558,7 +355,7 @@ fun GlassCard(
                     )
                 }
 
-                // Soft inner shadows for depth and glass beveling
+                // 3. Soft inner shadows for depth and glass beveling
                 if (showInnerShadow) {
                     val shadowHeight = innerShadowBlur.toPx()
                     if (shadowHeight > 0f) {
@@ -575,7 +372,7 @@ fun GlassCard(
                         // Left subtle inner shadow for dimensional relief
                         drawRect(
                             brush = Brush.horizontalGradient(
-                                0.0f to innerShadowColor.copy(alpha = innerShadowColor.alpha * 0.25f),
+                                0.0f to innerShadowColor.copy(alpha = innerShadowColor.alpha * 0.28f),
                                 1.0f to Color.Transparent,
                                 startX = 0f,
                                 endX = shadowHeight * 0.65f
@@ -585,7 +382,7 @@ fun GlassCard(
                         drawRect(
                             brush = Brush.verticalGradient(
                                 0.0f to Color.Transparent,
-                                1.0f to Color.White.copy(alpha = 0.05f),
+                                1.0f to Color.White.copy(alpha = 0.04f),
                                 startY = (size.height - shadowHeight * 0.5f).coerceAtLeast(0f),
                                 endY = size.height
                             )
@@ -610,25 +407,19 @@ fun GlassCard(
 @Composable
 fun GlassCardBox(
     modifier: Modifier = Modifier,
-    cornerRadius: Dp = 32.dp,
+    cornerRadius: Dp = 24.dp,
     shape: Shape = RoundedCornerShape(cornerRadius),
     backgroundColor: Color = GlassSurface,
     backgroundBrush: Brush? = null,
     borderColor: Color = GlassBorder,
     borderBrush: Brush? = null,
     borderWidth: Dp = 1.dp,
-    blurRadius: Dp = 50.dp,
-    showOuterShadow: Boolean = true,
-    outerShadowColor: Color = Color.Black.copy(alpha = 0.25f),
-    outerShadowBlur: Dp = 20.dp,
-    outerShadowDistance: Dp = 10.dp,
-    showSoftGlow: Boolean = true,
-    softGlowColor: Color = Color.White.copy(alpha = 0.08f),
-    innerShadowColor: Color = Color.Black.copy(alpha = 0.30f),
-    innerShadowBlur: Dp = 14.dp,
+    blurRadius: Dp = 0.dp,
+    innerShadowColor: Color = Color.Black.copy(alpha = 0.35f),
+    innerShadowBlur: Dp = 16.dp,
     showInnerShadow: Boolean = true,
     specularHighlight: Boolean = true,
-    specularAlpha: Float = 0.14f,
+    specularAlpha: Float = 0.12f,
     contentPadding: PaddingValues = PaddingValues(18.dp),
     contentAlignment: Alignment = Alignment.TopStart,
     onClick: (() -> Unit)? = null,
@@ -651,9 +442,9 @@ fun GlassCardBox(
         if (borderColor == GlassBorder) {
             Brush.verticalGradient(
                 listOf(
-                    Color.White.copy(alpha = 0.28f),
-                    Color.White.copy(alpha = 0.18f),
-                    Color.White.copy(alpha = 0.12f)
+                    Color.White.copy(alpha = 0.32f),
+                    Color.White.copy(alpha = 0.16f),
+                    Color.White.copy(alpha = 0.08f)
                 )
             )
         } else {
@@ -677,50 +468,6 @@ fun GlassCardBox(
     Box(
         modifier = modifier
             .scale(scale)
-            .then(
-                if (showOuterShadow || showSoftGlow) {
-                    Modifier.drawBehind {
-                        val crPx = cornerRadius.toPx()
-
-                        // Soft Glow
-                        if (showSoftGlow) {
-                            val glowPadding = 6.dp.toPx()
-                            drawRoundRect(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        softGlowColor,
-                                        softGlowColor.copy(alpha = softGlowColor.alpha * 0.4f),
-                                        Color.Transparent
-                                    ),
-                                    center = center,
-                                    radius = (size.width.coerceAtLeast(size.height) / 2f) + glowPadding * 2f
-                                ),
-                                cornerRadius = CornerRadius(crPx, crPx)
-                            )
-                        }
-
-                        // Black Outer Shadow
-                        if (showOuterShadow) {
-                            val offsetY = outerShadowDistance.toPx()
-                            val blurPx = outerShadowBlur.toPx()
-                            drawRoundRect(
-                                brush = Brush.verticalGradient(
-                                    0.0f to Color.Transparent,
-                                    0.30f to outerShadowColor.copy(alpha = outerShadowColor.alpha * 0.35f),
-                                    1.0f to outerShadowColor,
-                                    startY = size.height * 0.2f,
-                                    endY = size.height + offsetY + blurPx
-                                ),
-                                topLeft = Offset(0f, offsetY * 0.5f),
-                                size = androidx.compose.ui.geometry.Size(size.width, size.height + offsetY),
-                                cornerRadius = CornerRadius(crPx, crPx)
-                            )
-                        }
-                    }
-                } else {
-                    Modifier
-                }
-            )
             .clip(shape)
             .then(
                 if (blurRadius > 0.dp) {
@@ -760,7 +507,7 @@ fun GlassCardBox(
                         )
                         drawRect(
                             brush = Brush.horizontalGradient(
-                                0.0f to innerShadowColor.copy(alpha = innerShadowColor.alpha * 0.25f),
+                                0.0f to innerShadowColor.copy(alpha = innerShadowColor.alpha * 0.28f),
                                 1.0f to Color.Transparent,
                                 startX = 0f,
                                 endX = shadowHeight * 0.65f
@@ -780,65 +527,20 @@ fun GlassCardBox(
 
 /**
  * Modifier extension to apply the signature GlassCard effect with semi-transparent surfaces,
- * subtle borders, outer shadow, and soft glow to any layout.
+ * subtle borders, and soft inner shadows to any layout.
  */
 fun Modifier.glassCard(
-    shape: Shape = RoundedCornerShape(32.dp),
+    shape: Shape = RoundedCornerShape(24.dp),
     backgroundColor: Color = GlassSurface,
     borderColor: Color = GlassBorder,
     borderWidth: Dp = 1.dp,
-    blurRadius: Dp = 50.dp,
-    showOuterShadow: Boolean = true,
-    outerShadowColor: Color = Color.Black.copy(alpha = 0.25f),
-    outerShadowBlur: Dp = 20.dp,
-    outerShadowDistance: Dp = 10.dp,
-    showSoftGlow: Boolean = true,
-    softGlowColor: Color = Color.White.copy(alpha = 0.08f),
-    innerShadowColor: Color = Color.Black.copy(alpha = 0.30f),
-    innerShadowBlur: Dp = 14.dp,
+    blurRadius: Dp = 0.dp,
+    innerShadowColor: Color = Color.Black.copy(alpha = 0.35f),
+    innerShadowBlur: Dp = 16.dp,
     showInnerShadow: Boolean = true,
     specularHighlight: Boolean = true,
-    specularAlpha: Float = 0.14f
+    specularAlpha: Float = 0.12f
 ): Modifier = this
-    .then(
-        if (showOuterShadow || showSoftGlow) {
-            Modifier.drawBehind {
-                if (showSoftGlow) {
-                    val glowPadding = 6.dp.toPx()
-                    drawRoundRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                softGlowColor,
-                                softGlowColor.copy(alpha = softGlowColor.alpha * 0.4f),
-                                Color.Transparent
-                            ),
-                            center = center,
-                            radius = (size.width.coerceAtLeast(size.height) / 2f) + glowPadding * 2f
-                        ),
-                        cornerRadius = CornerRadius(32.dp.toPx(), 32.dp.toPx())
-                    )
-                }
-                if (showOuterShadow) {
-                    val offsetY = outerShadowDistance.toPx()
-                    val blurPx = outerShadowBlur.toPx()
-                    drawRoundRect(
-                        brush = Brush.verticalGradient(
-                            0.0f to Color.Transparent,
-                            0.30f to outerShadowColor.copy(alpha = outerShadowColor.alpha * 0.35f),
-                            1.0f to outerShadowColor,
-                            startY = size.height * 0.2f,
-                            endY = size.height + offsetY + blurPx
-                        ),
-                        topLeft = Offset(0f, offsetY * 0.5f),
-                        size = androidx.compose.ui.geometry.Size(size.width, size.height + offsetY),
-                        cornerRadius = CornerRadius(32.dp.toPx(), 32.dp.toPx())
-                    )
-                }
-            }
-        } else {
-            Modifier
-        }
-    )
     .clip(shape)
     .then(
         if (blurRadius > 0.dp) {
@@ -872,7 +574,7 @@ fun Modifier.glassCard(
                 )
                 drawRect(
                     brush = Brush.horizontalGradient(
-                        0.0f to innerShadowColor.copy(alpha = innerShadowColor.alpha * 0.25f),
+                        0.0f to innerShadowColor.copy(alpha = innerShadowColor.alpha * 0.28f),
                         1.0f to Color.Transparent,
                         startX = 0f,
                         endX = shadowHeight * 0.65f
@@ -886,9 +588,9 @@ fun Modifier.glassCard(
         if (borderColor == GlassBorder) {
             Brush.verticalGradient(
                 listOf(
-                    Color.White.copy(alpha = 0.28f),
-                    Color.White.copy(alpha = 0.18f),
-                    Color.White.copy(alpha = 0.12f)
+                    Color.White.copy(alpha = 0.32f),
+                    Color.White.copy(alpha = 0.16f),
+                    Color.White.copy(alpha = 0.08f)
                 )
             )
         } else {
@@ -898,20 +600,16 @@ fun Modifier.glassCard(
     )
 
 /**
- * High-end iOS Liquid Glass Card delegating to [GlassCard] with corner radius 32.dp (28-36px spec),
- * 40-80 Gaussian blur, outer shadow, and soft glow.
+ * High-end Liquid Glass Card delegating to [GlassCard] for consistency and soft inner shadows.
  */
 @Composable
 fun LiquidGlassCard(
     modifier: Modifier = Modifier,
-    cornerRadius: Dp = 32.dp,
+    cornerRadius: Dp = 28.dp,
     shape: Shape = RoundedCornerShape(cornerRadius),
     backgroundColor: Color = GlassSurface,
     borderColor: Color = GlassBorder,
     borderWidth: Dp = 1.dp,
-    blurRadius: Dp = 50.dp,
-    showOuterShadow: Boolean = true,
-    showSoftGlow: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     GlassCard(
@@ -921,21 +619,18 @@ fun LiquidGlassCard(
         backgroundColor = backgroundColor,
         borderColor = borderColor,
         borderWidth = borderWidth,
-        blurRadius = blurRadius,
-        showOuterShadow = showOuterShadow,
-        showSoftGlow = showSoftGlow,
         content = content
     )
 }
 
 /**
- * Tactile spring-interactive Liquid Glass Button with soft glow & liquid refraction.
+ * Tactile spring-interactive Liquid Glass Button.
  */
 @Composable
 fun LiquidGlassButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(28.dp),
+    shape: Shape = CircleShape,
     backgroundColor: Color = GlassSurfaceElevated,
     borderColor: Color = GlassBorderBright,
     content: @Composable () -> Unit
@@ -956,29 +651,6 @@ fun LiquidGlassButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .drawBehind {
-                // Soft glow under button
-                drawRoundRect(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.12f),
-                            Color.Transparent
-                        ),
-                        center = center,
-                        radius = size.width.coerceAtLeast(size.height) * 0.6f
-                    ),
-                    cornerRadius = CornerRadius(28.dp.toPx(), 28.dp.toPx())
-                )
-                // Outer shadow
-                drawRoundRect(
-                    brush = Brush.verticalGradient(
-                        0.0f to Color.Transparent,
-                        1.0f to Color.Black.copy(alpha = 0.25f)
-                    ),
-                    topLeft = Offset(0f, 6.dp.toPx()),
-                    cornerRadius = CornerRadius(28.dp.toPx(), 28.dp.toPx())
-                )
-            }
             .clip(shape)
             .background(backgroundColor)
             .border(1.dp, borderColor, shape)
@@ -990,7 +662,7 @@ fun LiquidGlassButton(
                     onClick()
                 }
             )
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 18.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         content()
