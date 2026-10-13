@@ -42,6 +42,9 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -59,6 +62,7 @@ import com.example.ui.theme.DeepBlack
 import com.example.ui.theme.GlassBorder
 import com.example.ui.theme.GlassSurface
 import com.example.ui.theme.HiTechClockTheme
+import com.example.ui.theme.InterfaceStyle
 import com.example.ui.theme.LiquidFloatingNavBar
 import com.example.util.LocalHapticManager
 import com.example.util.rememberHapticManager
@@ -88,7 +92,15 @@ class MainActivity : ComponentActivity() {
                 AccentColorTheme.fromId(settings.accentColor)
             }
 
-            HiTechClockTheme(darkTheme = isDarkTheme, accentTheme = currentAccent) {
+            val currentInterfaceStyle = remember(settings.interfaceStyle) {
+                InterfaceStyle.fromId(settings.interfaceStyle)
+            }
+
+            HiTechClockTheme(
+                darkTheme = isDarkTheme,
+                accentTheme = currentAccent,
+                interfaceStyle = currentInterfaceStyle
+            ) {
                 val hapticManager = rememberHapticManager()
 
                 CompositionLocalProvider(LocalHapticManager provides hapticManager) {
@@ -105,10 +117,45 @@ class MainActivity : ComponentActivity() {
                     val stopwatchViewModel: StopwatchViewModel = viewModel()
                     val timerViewModel: TimerViewModel = remember { TimerViewModel(applicationContext) }
 
+                    val mainBg = when (currentInterfaceStyle) {
+                        InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFF060810)
+                        InterfaceStyle.MINIMAL -> Color(0xFF000000)
+                        InterfaceStyle.MIX_LIQUID -> DeepBlack
+                    }
+
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(DeepBlack)
+                            .background(mainBg)
+                            .then(
+                                if (currentInterfaceStyle == InterfaceStyle.PURE_LIQUID_GLASS) {
+                                    Modifier.drawBehind {
+                                        drawCircle(
+                                            brush = Brush.radialGradient(
+                                                colors = listOf(
+                                                    currentAccent.primary.copy(alpha = 0.12f),
+                                                    currentAccent.dark.copy(alpha = 0.04f),
+                                                    Color.Transparent
+                                                ),
+                                                center = Offset(size.width * 0.5f, size.height * 0.25f),
+                                                radius = size.width * 0.85f
+                                            )
+                                        )
+                                        drawCircle(
+                                            brush = Brush.radialGradient(
+                                                colors = listOf(
+                                                    currentAccent.light.copy(alpha = 0.08f),
+                                                    Color.Transparent
+                                                ),
+                                                center = Offset(size.width * 0.8f, size.height * 0.80f),
+                                                radius = size.width * 0.65f
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    Modifier
+                                }
+                            )
                     ) {
                         if (inSettings) {
                             SettingsScreen(
@@ -118,7 +165,7 @@ class MainActivity : ComponentActivity() {
                         } else {
                             Scaffold(
                                 modifier = Modifier.fillMaxSize(),
-                                containerColor = DeepBlack,
+                                containerColor = Color.Transparent,
                                 bottomBar = {
                                     LiquidFloatingNavBar(
                                         selectedTab = selectedTab,

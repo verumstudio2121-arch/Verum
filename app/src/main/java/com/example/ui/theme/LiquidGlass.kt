@@ -65,6 +65,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -289,6 +290,74 @@ fun GlassCard(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    val currentStyle = LocalInterfaceStyle.current
+    val currentAccent = LocalAccentColor.current
+
+    val effectiveBg = remember(backgroundColor, currentStyle) {
+        if (backgroundColor == GlassSurface) {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> Color(0x22FFFFFF)
+                InterfaceStyle.MINIMAL -> Color(0xFF1C1C1E)
+                InterfaceStyle.MIX_LIQUID -> GlassSurface
+            }
+        } else backgroundColor
+    }
+
+    val effectiveSpecular = when (currentStyle) {
+        InterfaceStyle.MINIMAL -> false
+        else -> specularHighlight
+    }
+
+    val effectiveSpecularAlpha = when (currentStyle) {
+        InterfaceStyle.PURE_LIQUID_GLASS -> (specularAlpha * 2.0f).coerceAtMost(0.32f)
+        InterfaceStyle.MINIMAL -> 0f
+        InterfaceStyle.MIX_LIQUID -> specularAlpha
+    }
+
+    val effectiveShowInnerShadow = when (currentStyle) {
+        InterfaceStyle.MINIMAL -> false
+        else -> showInnerShadow
+    }
+
+    val effectiveBorderBrush = borderBrush ?: remember(borderColor, currentStyle, currentAccent) {
+        if (borderColor == GlassBorder) {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> {
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.72f),
+                            currentAccent.light.copy(alpha = 0.45f),
+                            currentAccent.primary.copy(alpha = 0.22f),
+                            Color.White.copy(alpha = 0.12f)
+                        )
+                    )
+                }
+                InterfaceStyle.MINIMAL -> {
+                    SolidColor(Color(0xFF2C2C2E))
+                }
+                InterfaceStyle.MIX_LIQUID -> {
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.32f),
+                            Color.White.copy(alpha = 0.16f),
+                            Color.White.copy(alpha = 0.08f)
+                        )
+                    )
+                }
+            }
+        } else {
+            SolidColor(borderColor)
+        }
+    }
+
+    val effectiveBorderWidth = remember(borderWidth, currentStyle) {
+        when (currentStyle) {
+            InterfaceStyle.PURE_LIQUID_GLASS -> (borderWidth * 1.2f).coerceAtLeast(1.2.dp)
+            InterfaceStyle.MINIMAL -> 0.85.dp
+            InterfaceStyle.MIX_LIQUID -> borderWidth
+        }
+    }
+
     val scale by animateFloatAsState(
         targetValue = if (onClick != null && isPressed) 0.98f else 1.0f,
         animationSpec = spring(
@@ -297,20 +366,6 @@ fun GlassCard(
         ),
         label = "glass_card_press_scale"
     )
-
-    val effectiveBorderBrush = borderBrush ?: remember(borderColor) {
-        if (borderColor == GlassBorder) {
-            Brush.verticalGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.32f),
-                    Color.White.copy(alpha = 0.16f),
-                    Color.White.copy(alpha = 0.08f)
-                )
-            )
-        } else {
-            SolidColor(borderColor)
-        }
-    }
 
     val clickModifier = if (onClick != null) {
         Modifier.clickable(
@@ -341,22 +396,22 @@ fun GlassCard(
                 if (backgroundBrush != null) {
                     drawRect(brush = backgroundBrush)
                 } else {
-                    drawRect(color = backgroundColor)
+                    drawRect(color = effectiveBg)
                 }
 
                 // 2. Specular reflection highlight sheen
-                if (specularHighlight) {
+                if (effectiveSpecular) {
                     drawRect(
                         brush = Brush.verticalGradient(
-                            0.0f to Color.White.copy(alpha = specularAlpha),
-                            0.30f to Color.White.copy(alpha = specularAlpha * 0.35f),
+                            0.0f to Color.White.copy(alpha = effectiveSpecularAlpha),
+                            0.30f to Color.White.copy(alpha = effectiveSpecularAlpha * 0.35f),
                             1.0f to Color.Transparent
                         )
                     )
                 }
 
                 // 3. Soft inner shadows for depth and glass beveling
-                if (showInnerShadow) {
+                if (effectiveShowInnerShadow) {
                     val shadowHeight = innerShadowBlur.toPx()
                     if (shadowHeight > 0f) {
                         // Top inner shadow (recessed depth / overhead occlusion)
@@ -390,7 +445,7 @@ fun GlassCard(
                     }
                 }
             }
-            .border(borderWidth, effectiveBorderBrush, shape)
+            .border(effectiveBorderWidth, effectiveBorderBrush, shape)
             .then(clickModifier)
     ) {
         Column(
@@ -429,6 +484,74 @@ fun GlassCardBox(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    val currentStyle = LocalInterfaceStyle.current
+    val currentAccent = LocalAccentColor.current
+
+    val effectiveBg = remember(backgroundColor, currentStyle) {
+        if (backgroundColor == GlassSurface) {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> Color(0x22FFFFFF)
+                InterfaceStyle.MINIMAL -> Color(0xFF1C1C1E)
+                InterfaceStyle.MIX_LIQUID -> GlassSurface
+            }
+        } else backgroundColor
+    }
+
+    val effectiveSpecular = when (currentStyle) {
+        InterfaceStyle.MINIMAL -> false
+        else -> specularHighlight
+    }
+
+    val effectiveSpecularAlpha = when (currentStyle) {
+        InterfaceStyle.PURE_LIQUID_GLASS -> (specularAlpha * 2.0f).coerceAtMost(0.32f)
+        InterfaceStyle.MINIMAL -> 0f
+        InterfaceStyle.MIX_LIQUID -> specularAlpha
+    }
+
+    val effectiveShowInnerShadow = when (currentStyle) {
+        InterfaceStyle.MINIMAL -> false
+        else -> showInnerShadow
+    }
+
+    val effectiveBorderBrush = borderBrush ?: remember(borderColor, currentStyle, currentAccent) {
+        if (borderColor == GlassBorder) {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> {
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.72f),
+                            currentAccent.light.copy(alpha = 0.45f),
+                            currentAccent.primary.copy(alpha = 0.22f),
+                            Color.White.copy(alpha = 0.12f)
+                        )
+                    )
+                }
+                InterfaceStyle.MINIMAL -> {
+                    SolidColor(Color(0xFF2C2C2E))
+                }
+                InterfaceStyle.MIX_LIQUID -> {
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.32f),
+                            Color.White.copy(alpha = 0.16f),
+                            Color.White.copy(alpha = 0.08f)
+                        )
+                    )
+                }
+            }
+        } else {
+            SolidColor(borderColor)
+        }
+    }
+
+    val effectiveBorderWidth = remember(borderWidth, currentStyle) {
+        when (currentStyle) {
+            InterfaceStyle.PURE_LIQUID_GLASS -> (borderWidth * 1.2f).coerceAtLeast(1.2.dp)
+            InterfaceStyle.MINIMAL -> 0.85.dp
+            InterfaceStyle.MIX_LIQUID -> borderWidth
+        }
+    }
+
     val scale by animateFloatAsState(
         targetValue = if (onClick != null && isPressed) 0.98f else 1.0f,
         animationSpec = spring(
@@ -437,20 +560,6 @@ fun GlassCardBox(
         ),
         label = "glass_card_box_press_scale"
     )
-
-    val effectiveBorderBrush = borderBrush ?: remember(borderColor) {
-        if (borderColor == GlassBorder) {
-            Brush.verticalGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.32f),
-                    Color.White.copy(alpha = 0.16f),
-                    Color.White.copy(alpha = 0.08f)
-                )
-            )
-        } else {
-            SolidColor(borderColor)
-        }
-    }
 
     val clickModifier = if (onClick != null) {
         Modifier.clickable(
@@ -480,20 +589,20 @@ fun GlassCardBox(
                 if (backgroundBrush != null) {
                     drawRect(brush = backgroundBrush)
                 } else {
-                    drawRect(color = backgroundColor)
+                    drawRect(color = effectiveBg)
                 }
 
-                if (specularHighlight) {
+                if (effectiveSpecular) {
                     drawRect(
                         brush = Brush.verticalGradient(
-                            0.0f to Color.White.copy(alpha = specularAlpha),
-                            0.30f to Color.White.copy(alpha = specularAlpha * 0.35f),
+                            0.0f to Color.White.copy(alpha = effectiveSpecularAlpha),
+                            0.30f to Color.White.copy(alpha = effectiveSpecularAlpha * 0.35f),
                             1.0f to Color.Transparent
                         )
                     )
                 }
 
-                if (showInnerShadow) {
+                if (effectiveShowInnerShadow) {
                     val shadowHeight = innerShadowBlur.toPx()
                     if (shadowHeight > 0f) {
                         drawRect(
@@ -516,7 +625,7 @@ fun GlassCardBox(
                     }
                 }
             }
-            .border(borderWidth, effectiveBorderBrush, shape)
+            .border(effectiveBorderWidth, effectiveBorderBrush, shape)
             .then(clickModifier)
             .padding(contentPadding),
         contentAlignment = contentAlignment
@@ -940,6 +1049,51 @@ fun LiquidFloatingNavBar(
         }
     }
 
+    val currentStyle = LocalInterfaceStyle.current
+
+    val dockBrush = remember(currentStyle, lightBluePrimary) {
+        when (currentStyle) {
+            InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.18f),
+                    Color.White.copy(alpha = 0.08f),
+                    Color(0xFF0F1118).copy(alpha = 0.88f)
+                )
+            )
+            InterfaceStyle.MINIMAL -> Brush.verticalGradient(
+                listOf(
+                    Color(0xFF10121A),
+                    Color(0xFF0A0B10)
+                )
+            )
+            InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
+                listOf(
+                    Color(0xFF222226).copy(alpha = 0.88f),
+                    Color(0xFF141416).copy(alpha = 0.94f)
+                )
+            )
+        }
+    }
+
+    val dockBorderBrush = remember(currentStyle, lightBlueLight) {
+        when (currentStyle) {
+            InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.65f),
+                    lightBlueLight.copy(alpha = 0.45f),
+                    Color.White.copy(alpha = 0.18f)
+                )
+            )
+            InterfaceStyle.MINIMAL -> SolidColor(Color.White.copy(alpha = 0.12f))
+            InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.22f),
+                    Color.White.copy(alpha = 0.08f)
+                )
+            )
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -952,22 +1106,10 @@ fun LiquidFloatingNavBar(
                 .fillMaxWidth()
                 .height(70.dp)
                 .clip(CircleShape)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFF222226).copy(alpha = 0.88f),
-                            Color(0xFF141416).copy(alpha = 0.94f)
-                        )
-                    )
-                )
+                .background(dockBrush)
                 .border(
-                    width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.22f),
-                            Color.White.copy(alpha = 0.08f)
-                        )
-                    ),
+                    width = if (currentStyle == InterfaceStyle.MINIMAL) 0.85.dp else 1.dp,
+                    brush = dockBorderBrush,
                     shape = CircleShape
                 )
                 .padding(horizontal = 6.dp, vertical = 6.dp),
@@ -1064,6 +1206,46 @@ fun LiquidFloatingNavBar(
             }
 
             // Animated morphing liquid light blue glass capsule
+            val capsuleBackgroundBrush = remember(currentStyle, lightBluePrimary, lightBlueDark) {
+                when (currentStyle) {
+                    InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
+                        listOf(
+                            lightBluePrimary.copy(alpha = 0.38f),
+                            lightBlueDark.copy(alpha = 0.24f),
+                            Color.White.copy(alpha = 0.14f)
+                        )
+                    )
+                    InterfaceStyle.MINIMAL -> SolidColor(lightBluePrimary.copy(alpha = 0.16f))
+                    InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
+                        listOf(
+                            lightBluePrimary.copy(alpha = 0.28f),
+                            lightBlueDark.copy(alpha = 0.18f),
+                            Color.Black.copy(alpha = 0.22f)
+                        )
+                    )
+                }
+            }
+
+            val capsuleBorderBrush = remember(currentStyle, lightBlueLight, lightBluePrimary) {
+                when (currentStyle) {
+                    InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.85f),
+                            lightBlueLight.copy(alpha = 0.65f),
+                            lightBluePrimary.copy(alpha = 0.40f)
+                        )
+                    )
+                    InterfaceStyle.MINIMAL -> SolidColor(lightBluePrimary.copy(alpha = 0.65f))
+                    InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.65f),
+                            lightBlueLight.copy(alpha = 0.45f),
+                            lightBluePrimary.copy(alpha = 0.25f)
+                        )
+                    )
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .offset(x = offsetX)
@@ -1073,57 +1255,67 @@ fun LiquidFloatingNavBar(
                         scaleY = squishY
                     }
                     .clip(CircleShape)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                lightBluePrimary.copy(alpha = 0.28f),
-                                lightBlueDark.copy(alpha = 0.18f),
-                                Color.Black.copy(alpha = 0.22f)
-                            )
-                        )
-                    )
+                    .background(capsuleBackgroundBrush)
                     .drawBehind {
-                        // Soft liquid aura glow
-                        drawRoundRect(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    lightBluePrimary.copy(alpha = 0.35f),
-                                    lightBluePrimary.copy(alpha = 0.08f),
-                                    Color.Transparent
+                        if (currentStyle == InterfaceStyle.PURE_LIQUID_GLASS) {
+                            // Enhanced luminous aura glow
+                            drawRoundRect(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        lightBluePrimary.copy(alpha = 0.48f),
+                                        lightBluePrimary.copy(alpha = 0.15f),
+                                        Color.Transparent
+                                    ),
+                                    center = center,
+                                    radius = size.width.coerceAtLeast(size.height) * 0.9f
                                 ),
-                                center = center,
-                                radius = size.width.coerceAtLeast(size.height) * 0.7f
-                            ),
-                            cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
-                        )
-                        // Top specular liquid reflection sheen
-                        drawRoundRect(
-                            brush = Brush.verticalGradient(
-                                0.0f to Color.White.copy(alpha = 0.40f),
-                                0.35f to lightBlueLight.copy(alpha = 0.20f),
-                                1.0f to Color.Transparent
-                            ),
-                            cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
-                        )
+                                cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
+                            )
+                            // Top radiant specular glass reflection sheen
+                            drawRoundRect(
+                                brush = Brush.verticalGradient(
+                                    0.0f to Color.White.copy(alpha = 0.60f),
+                                    0.40f to lightBlueLight.copy(alpha = 0.30f),
+                                    1.0f to Color.Transparent
+                                ),
+                                cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
+                            )
+                        } else if (currentStyle == InterfaceStyle.MIX_LIQUID) {
+                            // Soft liquid aura glow
+                            drawRoundRect(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        lightBluePrimary.copy(alpha = 0.35f),
+                                        lightBluePrimary.copy(alpha = 0.08f),
+                                        Color.Transparent
+                                    ),
+                                    center = center,
+                                    radius = size.width.coerceAtLeast(size.height) * 0.7f
+                                ),
+                                cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
+                            )
+                            // Top specular liquid reflection sheen
+                            drawRoundRect(
+                                brush = Brush.verticalGradient(
+                                    0.0f to Color.White.copy(alpha = 0.40f),
+                                    0.35f to lightBlueLight.copy(alpha = 0.20f),
+                                    1.0f to Color.Transparent
+                                ),
+                                cornerRadius = CornerRadius(size.height / 2f, size.height / 2f)
+                            )
+                        }
                     }
                     .border(
-                        width = 1.dp,
-                        brush = Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.65f),
-                                lightBlueLight.copy(alpha = 0.45f),
-                                lightBluePrimary.copy(alpha = 0.25f)
-                            )
-                        ),
+                        width = if (currentStyle == InterfaceStyle.MINIMAL) 1.dp else 1.2.dp,
+                        brush = capsuleBorderBrush,
                         shape = CircleShape
                     )
             )
 
             // Navigation items row with drag interaction overlay
+            // Navigation items row
             Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(dragModifier),
+                modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1134,7 +1326,8 @@ fun LiquidFloatingNavBar(
                 }
 
                 tabs.forEach { tab ->
-                    val isSelected = tabs.indexOf(tab) == highlightedIndex
+                    val tabIdx = tabs.indexOf(tab)
+                    val isSelected = (tab == selectedTab) || (tabIdx == highlightedIndex)
                     val interactionSource = remember { MutableInteractionSource() }
                     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -1188,14 +1381,13 @@ fun LiquidFloatingNavBar(
                                 scaleY = buttonPressScale
                             }
                             .clip(CircleShape)
+                            .testTag("nav_tab_${tab.name.lowercase()}")
                             .clickable(
                                 interactionSource = interactionSource,
                                 indication = null,
                                 onClick = {
-                                    if (!isSelected) {
-                                        haptic.buttonClick()
-                                        onTabSelected(tab)
-                                    }
+                                    haptic.buttonClick()
+                                    onTabSelected(tab)
                                 }
                             ),
                         contentAlignment = Alignment.Center

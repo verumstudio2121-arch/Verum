@@ -59,7 +59,9 @@ import com.example.ui.theme.GlassBorder
 import com.example.ui.theme.GlassBorderBright
 import com.example.ui.theme.GlassSurface
 import com.example.ui.theme.GlassSurfaceElevated
+import com.example.ui.theme.InterfaceStyle
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalInterfaceStyle
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -244,13 +246,51 @@ fun AlarmTimePickerScroller(
 
         Spacer(modifier = Modifier.height(18.dp))
 
+        val currentStyle = LocalInterfaceStyle.current
+        val pickerCardShape = RoundedCornerShape(26.dp)
+
         // Main Picker Card
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(26.dp))
-                .background(GlassSurface)
-                .border(1.dp, GlassBorderBright, RoundedCornerShape(26.dp))
+                .clip(pickerCardShape)
+                .then(
+                    when (currentStyle) {
+                        InterfaceStyle.PURE_LIQUID_GLASS -> Modifier
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.16f),
+                                        accentColor.copy(alpha = 0.08f),
+                                        Color(0xFF10121C).copy(alpha = 0.85f)
+                                    )
+                                )
+                            )
+                            .border(
+                                1.2.dp,
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.70f),
+                                        accentColor.copy(alpha = 0.40f)
+                                    )
+                                ),
+                                pickerCardShape
+                            )
+                        InterfaceStyle.MINIMAL -> Modifier
+                            .background(Color(0xFF1C1C1E))
+                            .border(1.dp, Color(0xFF2C2C2E), pickerCardShape)
+                        InterfaceStyle.MIX_LIQUID -> Modifier
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color(0xFF20222A).copy(alpha = 0.94f),
+                                        Color(0xFF14151C).copy(alpha = 0.96f)
+                                    )
+                                )
+                            )
+                            .border(1.dp, GlassBorderBright, pickerCardShape)
+                    }
+                )
                 .padding(vertical = 12.dp, horizontal = 16.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -306,8 +346,11 @@ private fun AlarmScrollerColumns(
     haptic: HapticManager
 ) {
     val accentColor = LocalAccentColor.current.primary
+    val currentStyle = LocalInterfaceStyle.current
     val hourMin = if (is24Hour) 0 else 1
     val hourMax = if (is24Hour) 23 else 12
+
+    val bandShape = RoundedCornerShape(16.dp)
 
     Box(
         modifier = Modifier
@@ -315,14 +358,49 @@ private fun AlarmScrollerColumns(
             .height(210.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Center horizontal highlight band
+        // Center horizontal highlight band (Adapts across Pure Minimal, Pure Liquid Glass, Mix Liquid)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(58.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(GlassSurfaceElevated)
-                .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                .clip(bandShape)
+                .then(
+                    when (currentStyle) {
+                        InterfaceStyle.PURE_LIQUID_GLASS -> Modifier
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.22f),
+                                        accentColor.copy(alpha = 0.15f),
+                                        Color.White.copy(alpha = 0.05f)
+                                    )
+                                )
+                            )
+                            .border(
+                                1.2.dp,
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.85f),
+                                        accentColor.copy(alpha = 0.50f)
+                                    )
+                                ),
+                                bandShape
+                            )
+                        InterfaceStyle.MINIMAL -> Modifier
+                            .background(Color(0xFF2C2C2E))
+                            .border(1.dp, Color(0xFF3A3A3C), bandShape)
+                        InterfaceStyle.MIX_LIQUID -> Modifier
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color(0xFF282A34),
+                                        Color(0xFF191B22)
+                                    )
+                                )
+                            )
+                            .border(1.dp, accentColor.copy(alpha = 0.45f), bandShape)
+                    }
+                )
         )
 
         Row(

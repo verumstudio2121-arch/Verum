@@ -40,11 +40,13 @@ class AppIconManager(private val context: Context) {
 
     companion object {
         const val ICON_DEFAULT = "default"
+        const val ICON_CLOCK = "clock"
         const val ICON_CUSTOM = "custom"
         const val ICON_NEON = "neon"
         const val ICON_MINIMAL = "minimal"
 
         const val ALIAS_MAIN = "com.example.MainActivity"
+        const val ALIAS_CLOCK = "com.example.MainActivityAliasClock"
         const val ALIAS_CUSTOM = "com.example.MainActivityAliasCustom"
         const val ALIAS_NEON = "com.example.MainActivityAliasNeon"
         const val ALIAS_MINIMAL = "com.example.MainActivityAliasMinimal"
@@ -117,6 +119,7 @@ class AppIconManager(private val context: Context) {
      */
     fun setPresetIconStyle(style: String) {
         val targetAlias = when (style) {
+            ICON_CLOCK -> ALIAS_CLOCK
             ICON_NEON -> ALIAS_NEON
             ICON_MINIMAL -> ALIAS_MINIMAL
             ICON_CUSTOM -> {
@@ -142,7 +145,7 @@ class AppIconManager(private val context: Context) {
     private fun applyLauncherAlias(activeAlias: String) {
         try {
             val pm = appContext.packageManager
-            val allAliases = listOf(ALIAS_MAIN, ALIAS_CUSTOM, ALIAS_NEON, ALIAS_MINIMAL)
+            val allAliases = listOf(ALIAS_MAIN, ALIAS_CLOCK, ALIAS_CUSTOM, ALIAS_NEON, ALIAS_MINIMAL)
 
             for (alias in allAliases) {
                 val component = ComponentName(appContext.packageName, alias)

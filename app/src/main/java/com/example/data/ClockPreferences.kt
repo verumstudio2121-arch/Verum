@@ -8,7 +8,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 data class AppSettings(
     val appearance: String = "Dark", // Dark, Light, System
-    val accentColor: String = "Light Blue", // Light Blue, Lavender, Mint, Coral
+    val accentColor: String = "Light Blue", // Light Blue, Lavender, Mint, Coral, or custom hex
+    val interfaceStyle: String = "Mix Liquid", // "Mix Liquid", "Pure Liquid Glass", "Minimal"
     val clockFormat: String = "12 hour", // 12 hour, 24 hour
     val showSeconds: Boolean = false,
     val alarmVolume: Float = 0.85f,
@@ -29,6 +30,7 @@ class PreferencesManager(context: Context) {
         return AppSettings(
             appearance = prefs.getString("appearance", "Dark") ?: "Dark",
             accentColor = prefs.getString("accent_color", "Light Blue") ?: "Light Blue",
+            interfaceStyle = prefs.getString("interface_style", "Mix Liquid") ?: "Mix Liquid",
             clockFormat = prefs.getString("clock_format", "12 hour") ?: "12 hour",
             showSeconds = prefs.getBoolean("show_seconds", false),
             alarmVolume = prefs.getFloat("alarm_volume", 0.85f),
@@ -42,6 +44,11 @@ class PreferencesManager(context: Context) {
     fun updateAppearance(value: String) {
         prefs.edit().putString("appearance", value).apply()
         _settings.value = _settings.value.copy(appearance = value)
+    }
+
+    fun updateInterfaceStyle(value: String) {
+        prefs.edit().putString("interface_style", value).apply()
+        _settings.value = _settings.value.copy(interfaceStyle = value)
     }
 
     fun updateAccentColor(value: String) {

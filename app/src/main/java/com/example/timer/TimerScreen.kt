@@ -105,7 +105,7 @@ fun TimerScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DeepBlack)
+            .background(Color.Transparent)
     ) {
         Column(
             modifier = Modifier

@@ -57,6 +57,11 @@ import com.example.alarm.AlarmReceiver
 import com.example.alarm.AlarmRingingActivity
 import com.example.data.AlarmModel
 import com.example.data.AlarmRepository
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import com.example.data.AppSettings
 import com.example.ui.theme.AccentOrange
 import com.example.ui.theme.AccentRed
@@ -65,8 +70,10 @@ import com.example.ui.theme.GlassBorder
 import com.example.ui.theme.GlassBorderBright
 import com.example.ui.theme.GlassSurface
 import com.example.ui.theme.GlassSurfaceElevated
+import com.example.ui.theme.InterfaceStyle
 import com.example.ui.theme.LiquidGlassCard
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalInterfaceStyle
 import com.example.ui.theme.TextDisabled
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
@@ -85,7 +92,9 @@ fun AlarmScreen(
     var isCreatingAlarm by remember { mutableStateOf(false) }
     val haptic = LocalHapticManager.current
     val context = LocalContext.current
-    val accentColor = LocalAccentColor.current.primary
+    val currentStyle = LocalInterfaceStyle.current
+    val currentAccent = LocalAccentColor.current
+    val accentColor = currentAccent.primary
 
     // Request POST_NOTIFICATIONS permission on Android 13+
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -98,10 +107,16 @@ fun AlarmScreen(
         }
     }
 
+    val screenBg = when (currentStyle) {
+        InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFF060810)
+        InterfaceStyle.MINIMAL -> Color(0xFF000000)
+        InterfaceStyle.MIX_LIQUID -> DeepBlack
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DeepBlack)
+            .background(screenBg)
     ) {
         Column(
             modifier = Modifier
@@ -120,13 +135,18 @@ fun AlarmScreen(
                 Box(
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(GlassSurface)
-                        .border(1.dp, GlassBorder, CircleShape)
+                        .background(if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1C1C1E) else GlassSurface)
+                        .border(
+                            1.dp,
+                            if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassBorder,
+                            CircleShape
+                        )
                         .clickable {
                             haptic.buttonClick()
                             isEditMode = !isEditMode
                         }
                         .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .testTag("alarm_edit_mode_button")
                 ) {
                     Text(
                         text = if (isEditMode) "Done" else "Edit",
@@ -141,8 +161,12 @@ fun AlarmScreen(
                     Box(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(GlassSurface)
-                            .border(1.dp, GlassBorder, CircleShape)
+                            .background(if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1C1C1E) else GlassSurface)
+                            .border(
+                                1.dp,
+                                if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassBorder,
+                                CircleShape
+                            )
                             .clickable {
                                 haptic.confirm()
                                 val testIntent = Intent(context, AlarmRingingActivity::class.java).apply {
@@ -155,6 +179,7 @@ fun AlarmScreen(
                                 context.startActivity(testIntent)
                             }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
+                            .testTag("test_alarm_ring_button")
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
@@ -180,12 +205,17 @@ fun AlarmScreen(
                         modifier = Modifier
                             .size(42.dp)
                             .clip(CircleShape)
-                            .background(GlassSurface)
-                            .border(1.dp, GlassBorder, CircleShape)
+                            .background(if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1C1C1E) else GlassSurface)
+                            .border(
+                                1.dp,
+                                if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassBorder,
+                                CircleShape
+                            )
                             .clickable {
                                 haptic.buttonClick()
                                 onOpenSettings()
-                            },
+                            }
+                            .testTag("settings_button"),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -198,17 +228,32 @@ fun AlarmScreen(
 
                     Spacer(modifier = Modifier.width(10.dp))
 
-                    // Add Alarm [ + ]
+                    // Add Alarm [ + ] in top bar
                     Box(
                         modifier = Modifier
                             .size(42.dp)
                             .clip(CircleShape)
-                            .background(GlassSurfaceElevated)
-                            .border(1.dp, GlassBorderBright, CircleShape)
+                            .background(
+                                when (currentStyle) {
+                                    InterfaceStyle.PURE_LIQUID_GLASS -> accentColor.copy(alpha = 0.28f)
+                                    InterfaceStyle.MINIMAL -> Color(0xFF1685F8)
+                                    InterfaceStyle.MIX_LIQUID -> GlassSurfaceElevated
+                                }
+                            )
+                            .border(
+                                1.dp,
+                                when (currentStyle) {
+                                    InterfaceStyle.PURE_LIQUID_GLASS -> accentColor.copy(alpha = 0.65f)
+                                    InterfaceStyle.MINIMAL -> Color.Transparent
+                                    InterfaceStyle.MIX_LIQUID -> GlassBorderBright
+                                },
+                                CircleShape
+                            )
                             .clickable {
                                 haptic.buttonClick()
                                 isCreatingAlarm = true
-                            },
+                            }
+                            .testTag("add_alarm_button"),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -249,30 +294,93 @@ fun AlarmScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("No Alarms", color = TextSecondary, fontSize = 20.sp, fontWeight = FontWeight.Medium)
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text("Tap + above to create an alarm", color = TextTertiary, fontSize = 14.sp)
+                        Text("Tap + to create an alarm", color = TextTertiary, fontSize = 14.sp)
                     }
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 120.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    contentPadding = PaddingValues(bottom = 140.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(alarms, key = { it.id }) { alarm ->
                         val is24H = settings.clockFormat == "24 hour"
                         val textColor = if (alarm.isEnabled) TextPrimary else TextDisabled
                         val secondaryTextColor = if (alarm.isEnabled) TextSecondary else TextDisabled
 
-                        LiquidGlassCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    haptic.buttonClick()
-                                    editingAlarm = alarm
-                                },
-                            cornerRadius = 28.dp,
-                            backgroundColor = GlassSurface
-                        ) {
+                        // Card styling according to selected interface style
+                        val cardShape = RoundedCornerShape(
+                            when (currentStyle) {
+                                InterfaceStyle.PURE_LIQUID_GLASS -> 24.dp
+                                InterfaceStyle.MINIMAL -> 18.dp
+                                InterfaceStyle.MIX_LIQUID -> 22.dp
+                            }
+                        )
+
+                        val cardModifier = Modifier
+                            .fillMaxWidth()
+                            .clip(cardShape)
+                            .then(
+                                when (currentStyle) {
+                                    InterfaceStyle.PURE_LIQUID_GLASS -> Modifier
+                                        .background(
+                                            Brush.verticalGradient(
+                                                listOf(
+                                                    Color.White.copy(alpha = 0.14f),
+                                                    accentColor.copy(alpha = 0.08f),
+                                                    Color(0xFF10121C).copy(alpha = 0.75f)
+                                                )
+                                            )
+                                        )
+                                        .border(
+                                            1.2.dp,
+                                            Brush.verticalGradient(
+                                                listOf(
+                                                    Color.White.copy(alpha = 0.65f),
+                                                    currentAccent.light.copy(alpha = 0.40f),
+                                                    Color.White.copy(alpha = 0.10f)
+                                                )
+                                            ),
+                                            cardShape
+                                        )
+
+                                    InterfaceStyle.MINIMAL -> Modifier
+                                        .background(Color(0xFF1C1C1E))
+                                        .border(
+                                            1.dp,
+                                            Color(0xFF2C2C2E),
+                                            cardShape
+                                        )
+
+                                    InterfaceStyle.MIX_LIQUID -> Modifier
+                                        .background(
+                                            Brush.verticalGradient(
+                                                listOf(
+                                                    Color(0xFF20222A).copy(alpha = 0.92f),
+                                                    Color(0xFF13141A).copy(alpha = 0.96f)
+                                                )
+                                            )
+                                        )
+                                        .border(
+                                            1.dp,
+                                            Brush.verticalGradient(
+                                                listOf(
+                                                    Color.White.copy(alpha = 0.25f),
+                                                    Color.White.copy(alpha = 0.06f)
+                                                )
+                                            ),
+                                            cardShape
+                                        )
+                                }
+                            )
+                            .clickable {
+                                haptic.buttonClick()
+                                editingAlarm = alarm
+                            }
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .testTag("alarm_card_${alarm.id}")
+
+                        Box(modifier = cardModifier) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -284,7 +392,8 @@ fun AlarmScreen(
                                         onClick = {
                                             haptic.reject()
                                             repository.deleteAlarm(alarm.id)
-                                        }
+                                        },
+                                        modifier = Modifier.padding(end = 8.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Delete,
@@ -294,70 +403,54 @@ fun AlarmScreen(
                                     }
                                 }
 
-                                // Alarm time & details
-                                Column(modifier = Modifier.weight(1f)) {
+                                // LEFT SIDE: Large alarm time, AM/PM, repeat schedule & label
+                                // Fixed layout, strictly no ringtone filename, guaranteed consistent card height
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.Center
+                                ) {
                                     Row(verticalAlignment = Alignment.Bottom) {
                                         Text(
                                             text = alarm.getFormattedTime(is24H),
                                             color = textColor,
-                                            fontSize = 48.sp,
+                                            fontSize = 42.sp,
                                             fontWeight = FontWeight.Light,
                                             letterSpacing = (-1).sp
                                         )
                                         if (!is24H) {
-                                             Spacer(modifier = Modifier.width(6.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
                                             Text(
                                                 text = alarm.getAmPm(),
                                                 color = secondaryTextColor,
-                                                fontSize = 18.sp,
+                                                fontSize = 16.sp,
                                                 fontWeight = FontWeight.Normal,
-                                                modifier = Modifier.padding(bottom = 8.dp)
+                                                modifier = Modifier.padding(bottom = 5.dp)
                                             )
                                         }
                                     }
 
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(2.dp))
 
-                                    // Label, Repeat badge, and Sound
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Text(
-                                            text = alarm.label,
-                                            color = textColor,
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Medium
-                                        )
-
-                                        Text("•", color = TextTertiary, fontSize = 12.sp)
-
-                                        Text(
-                                            text = alarm.getRepeatSummary(),
-                                            color = secondaryTextColor,
-                                            fontSize = 13.sp
-                                        )
-
-                                        Text("•", color = TextTertiary, fontSize = 12.sp)
-
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = Icons.Default.MusicNote,
-                                                contentDescription = null,
-                                                tint = secondaryTextColor,
-                                                modifier = Modifier.size(12.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(2.dp))
-                                            Text(
-                                                text = alarm.soundName,
-                                                color = secondaryTextColor,
-                                                fontSize = 12.sp
-                                            )
-                                        }
+                                    // Repeat schedule | Alarm label (Strictly single line with ellipsis, NO ringtone filename)
+                                    val repeatText = alarm.getRepeatSummary()
+                                    val labelText = alarm.label.trim()
+                                    val summaryLine = if (labelText.isNotEmpty() && labelText != "Alarm") {
+                                        "$repeatText | $labelText"
+                                    } else {
+                                        repeatText
                                     }
+
+                                    Text(
+                                        text = summaryLine,
+                                        color = secondaryTextColor,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Normal,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
 
-                                // Enable / Disable switch (when not in edit mode)
+                                // RIGHT SIDE: Compact ON/OFF switch
                                 if (!isEditMode) {
                                     Switch(
                                         checked = alarm.isEnabled,
@@ -367,14 +460,125 @@ fun AlarmScreen(
                                         },
                                         colors = SwitchDefaults.colors(
                                             checkedThumbColor = Color.White,
-                                            checkedTrackColor = accentColor.copy(alpha = 0.85f),
-                                            uncheckedThumbColor = TextTertiary,
-                                            uncheckedTrackColor = GlassSurface
-                                        )
+                                            checkedTrackColor = when (currentStyle) {
+                                                InterfaceStyle.MINIMAL -> Color(0xFF1685F8)
+                                                InterfaceStyle.PURE_LIQUID_GLASS -> accentColor
+                                                InterfaceStyle.MIX_LIQUID -> accentColor.copy(alpha = 0.90f)
+                                            },
+                                            uncheckedThumbColor = Color(0xFFA5A5AA),
+                                            uncheckedTrackColor = when (currentStyle) {
+                                                InterfaceStyle.MINIMAL -> Color(0xFF2C2C2E)
+                                                InterfaceStyle.PURE_LIQUID_GLASS -> Color.White.copy(alpha = 0.12f)
+                                                InterfaceStyle.MIX_LIQUID -> Color.White.copy(alpha = 0.10f)
+                                            }
+                                        ),
+                                        modifier = Modifier.testTag("alarm_switch_${alarm.id}")
                                     )
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        // Floating Action Button (+) with style-specific appearance
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 24.dp, bottom = 96.dp)
+        ) {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        accentColor.copy(alpha = 0.85f),
+                                        currentAccent.dark.copy(alpha = 0.95f)
+                                    )
+                                )
+                            )
+                            .border(
+                                1.5.dp,
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.90f),
+                                        accentColor.copy(alpha = 0.50f)
+                                    )
+                                ),
+                                CircleShape
+                            )
+                            .clickable {
+                                haptic.buttonClick()
+                                isCreatingAlarm = true
+                            }
+                            .testTag("floating_add_alarm_button"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add Alarm",
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+                InterfaceStyle.MINIMAL -> {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF1685F8))
+                            .clickable {
+                                haptic.buttonClick()
+                                isCreatingAlarm = true
+                            }
+                            .testTag("floating_add_alarm_button"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add Alarm",
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+                InterfaceStyle.MIX_LIQUID -> {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        accentColor.copy(alpha = 0.90f),
+                                        currentAccent.dark.copy(alpha = 0.85f)
+                                    )
+                                )
+                            )
+                            .border(
+                                1.2.dp,
+                                Color.White.copy(alpha = 0.65f),
+                                CircleShape
+                            )
+                            .clickable {
+                                haptic.buttonClick()
+                                isCreatingAlarm = true
+                            }
+                            .testTag("floating_add_alarm_button"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add Alarm",
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
                 }
             }

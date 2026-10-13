@@ -39,12 +39,12 @@ data class AlarmModel(
 
     fun getRepeatSummary(): String {
         return when (repeatType) {
-            "Once" -> "Once"
+            "Once" -> "Ring once"
             "Every day" -> "Every day"
-            "Monday-Friday" -> "Mon - Fri"
-            "Saturday-Sunday" -> "Sat - Sun"
+            "Weekdays", "Monday-Friday" -> "Monday–Friday"
+            "Weekends", "Saturday-Sunday" -> "Weekends"
             "Custom" -> {
-                if (customDays.isEmpty()) "Once"
+                if (customDays.isEmpty()) "Ring once"
                 else if (customDays.size == 7) "Every day"
                 else {
                     val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -73,7 +73,7 @@ data class AlarmModel(
                     triggerDateTime = triggerDateTime.plusDays(1)
                 }
             }
-            "Monday-Friday" -> {
+            "Weekdays", "Monday-Friday" -> {
                 while (!triggerDateTime.isAfter(now) ||
                     triggerDateTime.dayOfWeek == DayOfWeek.SATURDAY ||
                     triggerDateTime.dayOfWeek == DayOfWeek.SUNDAY
@@ -81,7 +81,7 @@ data class AlarmModel(
                     triggerDateTime = triggerDateTime.plusDays(1)
                 }
             }
-            "Saturday-Sunday" -> {
+            "Weekends", "Saturday-Sunday" -> {
                 while (!triggerDateTime.isAfter(now) ||
                     (triggerDateTime.dayOfWeek != DayOfWeek.SATURDAY &&
                      triggerDateTime.dayOfWeek != DayOfWeek.SUNDAY)

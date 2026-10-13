@@ -141,6 +141,46 @@ val AccentThemeColor: Color
     @Composable
     get() = LocalAccentColor.current.primary
 
+/**
+ * Three distinct, color-customizable theme modes:
+ * 1. Pure Liquid Glass: High translucency frosted glass, specular reflections & neon glowing halos.
+ * 2. Minimal: Distraction-free OLED matte styling with hairline borders & razor-sharp precision.
+ * 3. Mix Liquid: Balanced liquid glass surfaces with tactile depth & modern vibrant accents (Default & Recommended).
+ */
+enum class InterfaceStyle(
+    val id: String,
+    val title: String,
+    val tag: String,
+    val description: String
+) {
+    MIX_LIQUID(
+        id = "Mix Liquid",
+        title = "Mix Liquid",
+        tag = "Signature • Balanced",
+        description = "Balanced liquid glass orbs, tactile neumorphic depth & vibrant modern accents"
+    ),
+    PURE_LIQUID_GLASS(
+        id = "Pure Liquid Glass",
+        title = "Pure Liquid Glass",
+        tag = "Frosted • Specular",
+        description = "High-translucency frosted glass with specular reflections & radiant glowing halos"
+    ),
+    MINIMAL(
+        id = "Minimal",
+        title = "Minimal",
+        tag = "Clean • Distraction-Free",
+        description = "Clean OLED matte surfaces with hairline borders & razor-sharp precision"
+    );
+
+    companion object {
+        fun fromId(id: String?): InterfaceStyle {
+            return entries.firstOrNull { it.id.equals(id, ignoreCase = true) } ?: MIX_LIQUID
+        }
+    }
+}
+
+val LocalInterfaceStyle = staticCompositionLocalOf<InterfaceStyle> { InterfaceStyle.MIX_LIQUID }
+
 // Typography
 val TextPrimary = Color(0xFFFFFFFF)
 val TextSecondary = Color(0xB8FFFFFF)

@@ -49,10 +49,24 @@ private fun createHiTechLightColorScheme(accentColor: Color) = lightColorScheme(
 fun HiTechClockTheme(
     darkTheme: Boolean = true,
     accentTheme: AccentTheme = AccentColorTheme.LIGHT_BLUE,
+    interfaceStyle: InterfaceStyle = InterfaceStyle.MIX_LIQUID,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) {
-        createHiTechDarkColorScheme(accentTheme.primary)
+        val base = createHiTechDarkColorScheme(accentTheme.primary)
+        when (interfaceStyle) {
+            InterfaceStyle.MINIMAL -> base.copy(
+                background = DeepBlack,
+                surface = Color(0xFF0F1017),
+                outline = Color(0x22FFFFFF)
+            )
+            InterfaceStyle.PURE_LIQUID_GLASS -> base.copy(
+                background = DeepBlack,
+                surface = Color(0x1AFFFFFF),
+                outline = Color(0x40FFFFFF)
+            )
+            InterfaceStyle.MIX_LIQUID -> base
+        }
     } else {
         createHiTechLightColorScheme(accentTheme.primary)
     }
@@ -71,7 +85,10 @@ fun HiTechClockTheme(
         }
     }
 
-    CompositionLocalProvider(LocalAccentColor provides accentTheme) {
+    CompositionLocalProvider(
+        LocalAccentColor provides accentTheme,
+        LocalInterfaceStyle provides interfaceStyle
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,

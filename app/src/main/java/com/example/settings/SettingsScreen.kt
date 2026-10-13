@@ -80,8 +80,10 @@ import com.example.ui.theme.GlassBorder
 import com.example.ui.theme.GlassBorderBright
 import com.example.ui.theme.GlassCard
 import com.example.ui.theme.GlassSurface
+import com.example.ui.theme.InterfaceStyle
 import com.example.ui.theme.LiquidGlassCard
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalInterfaceStyle
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -97,6 +99,9 @@ fun SettingsScreen(
     val haptic = LocalHapticManager.current
     val currentAccent = LocalAccentColor.current
     val accentColor = currentAccent.primary
+    val currentInterfaceStyle = remember(settings.interfaceStyle) {
+        InterfaceStyle.fromId(settings.interfaceStyle)
+    }
     val context = LocalContext.current
     val iconManager = remember { AppIconManager(context) }
     val currentIconStyle by iconManager.currentIconStyle.collectAsState()
@@ -201,6 +206,73 @@ fun SettingsScreen(
                 backgroundColor = GlassSurface
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
+                    // INTERFACE STYLE (Pure Liquid Glass, Minimal, Mix Liquid)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Interface Style",
+                                color = TextPrimary,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Three color-adaptive design themes",
+                                color = TextTertiary,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        // Badge showing current interface style
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(accentColor.copy(alpha = 0.18f))
+                                .border(1.dp, accentColor.copy(alpha = 0.50f), CircleShape)
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = currentInterfaceStyle.title,
+                                color = currentAccent.light,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // 3 Interface Style Cards
+                    InterfaceStyle.entries.forEach { styleOption ->
+                        val isSelected = currentInterfaceStyle == styleOption
+                        InterfaceStyleCard(
+                            style = styleOption,
+                            isSelected = isSelected,
+                            accentColor = accentColor,
+                            onClick = {
+                                haptic.buttonClick()
+                                preferencesManager.updateInterfaceStyle(styleOption.id)
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Subtle separator line
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(Color.White.copy(alpha = 0.08f))
+                    )
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
                     Text("Theme Mode", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -854,7 +926,27 @@ fun SettingsScreen(
                             )
                         }
 
-                        // Option 2: Gallery Custom Photo (shows selected photo thumbnail if available)
+                        // Option 2: Clock (Classic Dark Watchface)
+                        AppIconStyleOption(
+                            title = "Clock",
+                            subtitle = "Classic Dark",
+                            isSelected = currentIconStyle == AppIconManager.ICON_CLOCK,
+                            accentColor = accentColor,
+                            onClick = {
+                                haptic.buttonClick()
+                                iconManager.setPresetIconStyle(AppIconManager.ICON_CLOCK)
+                            }
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_clock_logo),
+                                contentDescription = "Clock Icon",
+                                modifier = Modifier
+                                    .size(54.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                            )
+                        }
+
+                        // Option 3: Gallery Custom Photo (shows selected photo thumbnail if available)
                         AppIconStyleOption(
                             title = "Gallery",
                             subtitle = if (customIconBitmap != null) "Active" else "Upload photo",
@@ -1013,6 +1105,21 @@ fun SettingsScreen(
                                 .clip(RoundedCornerShape(18.dp))
                                 .border(1.5.dp, accentColor, RoundedCornerShape(18.dp))
                         )
+                    } else if (currentIconStyle == AppIconManager.ICON_CLOCK) {
+                        Box(
+                            modifier = Modifier
+                                .size(68.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color(0xFF0A0B0E))
+                                .border(1.5.dp, Color.White.copy(alpha = 0.40f), RoundedCornerShape(18.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_clock_logo),
+                                contentDescription = "Active Clock Icon",
+                                modifier = Modifier.size(62.dp)
+                            )
+                        }
                     } else if (currentIconStyle == AppIconManager.ICON_NEON) {
                         Box(
                             modifier = Modifier
@@ -1361,4 +1468,232 @@ private fun AppIconStyleOption(
         }
     }
 }
+
+/**
+ * Interactive card representing one of the three color-adaptive interface styles.
+ * Features live mini-preview demonstrating the style's surface, border & glow in real-time.
+ */
+@Composable
+private fun InterfaceStyleCard(
+    style: InterfaceStyle,
+    isSelected: Boolean,
+    accentColor: Color,
+    onClick: () -> Unit
+) {
+    val currentAccent = LocalAccentColor.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (isSelected) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            accentColor.copy(alpha = 0.18f),
+                            accentColor.copy(alpha = 0.08f)
+                        )
+                    )
+                } else {
+                    Brush.linearGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.04f),
+                            Color.White.copy(alpha = 0.02f)
+                        )
+                    )
+                }
+            )
+            .border(
+                width = if (isSelected) 1.5.dp else 1.dp,
+                color = if (isSelected) accentColor.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(12.dp)
+            .testTag("interface_style_${style.name.lowercase()}")
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Live mini-preview swatch demonstrating the visual language of this theme
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .then(
+                        when (style) {
+                            InterfaceStyle.PURE_LIQUID_GLASS -> Modifier
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.28f),
+                                            accentColor.copy(alpha = 0.22f),
+                                            Color(0xFF0F1118)
+                                        )
+                                    )
+                                )
+                                .border(
+                                    1.2.dp,
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.85f),
+                                            currentAccent.light.copy(alpha = 0.65f),
+                                            accentColor.copy(alpha = 0.40f)
+                                        )
+                                    ),
+                                    RoundedCornerShape(12.dp)
+                                )
+
+                            InterfaceStyle.MINIMAL -> Modifier
+                                .background(Color(0xFF0C0E14))
+                                .border(
+                                    1.dp,
+                                    Color.White.copy(alpha = 0.16f),
+                                    RoundedCornerShape(12.dp)
+                                )
+
+                            InterfaceStyle.MIX_LIQUID -> Modifier
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color(0xFF22242E),
+                                            Color(0xFF13141B)
+                                        )
+                                    )
+                                )
+                                .border(
+                                    1.dp,
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.40f),
+                                            Color.White.copy(alpha = 0.10f)
+                                        )
+                                    ),
+                                    RoundedCornerShape(12.dp)
+                                )
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                // Mini accent detail inside preview
+                when (style) {
+                    InterfaceStyle.PURE_LIQUID_GLASS -> {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(
+                                            accentColor.copy(alpha = 0.75f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                                .border(1.dp, Color.White.copy(alpha = 0.85f), CircleShape)
+                        )
+                    }
+                    InterfaceStyle.MINIMAL -> {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(accentColor)
+                        )
+                    }
+                    InterfaceStyle.MIX_LIQUID -> {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            accentColor.copy(alpha = 0.65f),
+                                            currentAccent.dark.copy(alpha = 0.50f)
+                                        )
+                                    )
+                                )
+                                .border(1.dp, Color.White.copy(alpha = 0.50f), CircleShape)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Details (Title, Tag badge, Description)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = style.title,
+                        color = if (isSelected) TextPrimary else TextSecondary,
+                        fontSize = 15.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                if (isSelected) accentColor.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = style.tag,
+                            color = if (isSelected) currentAccent.light else TextTertiary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = style.description,
+                    color = if (isSelected) TextSecondary else TextTertiary,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Selection Radio / Check Indicator
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isSelected) accentColor else Color.Transparent
+                    )
+                    .border(
+                        width = 1.5.dp,
+                        color = if (isSelected) accentColor else Color.White.copy(alpha = 0.35f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Selected",
+                        tint = DeepBlack,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 
