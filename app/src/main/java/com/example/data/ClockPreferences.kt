@@ -16,7 +16,10 @@ data class AppSettings(
     val defaultAlarmSound: String = "Gentle",
     val vibrationEnabled: Boolean = true,
     val snoozeDurationMinutes: Int = 10, // 5, 10, 15, 20, 30
-    val timerSound: String = "Bell"
+    val timerSound: String = "Bell",
+    val backgroundType: String = "Black", // "Black" (Default), "Cosmos", "Cyber Grid", "Aurora Wave", "Midnight Deep", "Minimal Slate", "Custom Photo"
+    val customPhotoPath: String? = null,
+    val backgroundDim: Float = 0.40f
 )
 
 class PreferencesManager(context: Context) {
@@ -37,7 +40,10 @@ class PreferencesManager(context: Context) {
             defaultAlarmSound = prefs.getString("default_alarm_sound", "Gentle") ?: "Gentle",
             vibrationEnabled = prefs.getBoolean("vibration_enabled", true),
             snoozeDurationMinutes = prefs.getInt("snooze_duration", 10),
-            timerSound = prefs.getString("timer_sound", "Bell") ?: "Bell"
+            timerSound = prefs.getString("timer_sound", "Bell") ?: "Bell",
+            backgroundType = prefs.getString("background_type", "Black") ?: "Black",
+            customPhotoPath = prefs.getString("custom_photo_path", null),
+            backgroundDim = prefs.getFloat("background_dim", 0.40f)
         )
     }
 
@@ -89,5 +95,25 @@ class PreferencesManager(context: Context) {
     fun updateTimerSound(value: String) {
         prefs.edit().putString("timer_sound", value).apply()
         _settings.value = _settings.value.copy(timerSound = value)
+    }
+
+    fun updateBackgroundType(value: String) {
+        prefs.edit().putString("background_type", value).apply()
+        _settings.value = _settings.value.copy(backgroundType = value)
+    }
+
+    fun updateCustomPhotoPath(path: String?) {
+        if (path == null) {
+            prefs.edit().remove("custom_photo_path").apply()
+        } else {
+            prefs.edit().putString("custom_photo_path", path).apply()
+        }
+        _settings.value = _settings.value.copy(customPhotoPath = path)
+    }
+
+    fun updateBackgroundDim(dim: Float) {
+        val clamped = dim.coerceIn(0.0f, 0.90f)
+        prefs.edit().putFloat("background_dim", clamped).apply()
+        _settings.value = _settings.value.copy(backgroundDim = clamped)
     }
 }

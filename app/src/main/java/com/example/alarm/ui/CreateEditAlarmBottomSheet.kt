@@ -250,44 +250,6 @@ fun CreateEditAlarmBottomSheet(
                 )
             }
 
-            // NEXT ALARM COUNTDOWN (Requested in specs)
-            val actualHourForCountdown = when {
-                !isPm && displayHour == 12 -> 0
-                !isPm -> displayHour
-                isPm && displayHour == 12 -> 12
-                else -> displayHour + 12
-            }
-            val countdownText = remember(actualHourForCountdown, selectedMinute) {
-                val now = System.currentTimeMillis()
-                val cal = java.util.Calendar.getInstance().apply {
-                    set(java.util.Calendar.HOUR_OF_DAY, actualHourForCountdown)
-                    set(java.util.Calendar.MINUTE, selectedMinute)
-                    set(java.util.Calendar.SECOND, 0)
-                    set(java.util.Calendar.MILLISECOND, 0)
-                    if (timeInMillis <= now) {
-                        add(java.util.Calendar.DAY_OF_YEAR, 1)
-                    }
-                }
-                val diffMinutes = ((cal.timeInMillis - now) / 60000).coerceAtLeast(1)
-                val h = diffMinutes / 60
-                val m = diffMinutes % 60
-                if (h > 0) "Alarm rings in ${h}h ${m}m" else "Alarm rings in ${m}m"
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = countdownText,
-                    color = if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFFA5A5AA) else accentColor.copy(alpha = 0.85f),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
             // Dual-mode Scroller and Direct Type Alarm Time Picker
             AlarmTimePickerScroller(
                 displayHour = displayHour,

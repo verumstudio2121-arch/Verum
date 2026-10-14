@@ -1,9 +1,15 @@
 package com.example.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import coil.compose.AsyncImage
+import com.example.ui.background.BackgroundPreset
+import java.io.File
+import java.io.FileOutputStream
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -124,6 +130,27 @@ fun SettingsScreen(
         }
     }
 
+    // Launcher for selecting a custom background wallpaper photo from the gallery (zero-permission Photo Picker)
+    val backgroundPhotoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val destFile = File(context.filesDir, "custom_background.jpg")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(destFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                preferencesManager.updateCustomPhotoPath(destFile.absolutePath)
+                preferencesManager.updateBackgroundType(BackgroundPreset.CUSTOM_PHOTO.id)
+                haptic.confirm()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     // Audio file picker launcher for custom device ringtones
     val audioPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -149,7 +176,7 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DeepBlack)
+            .background(if (settings.backgroundType == "Black") DeepBlack else DeepBlack.copy(alpha = 0.55f))
     ) {
         Column(
             modifier = Modifier
@@ -462,6 +489,182 @@ fun SettingsScreen(
                                 color = if (isCustomSelected) TextPrimary else TextSecondary,
                                 fontSize = 12.sp,
                                 fontWeight = if (isCustomSelected) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // BACKGROUND & WALLPAPER SECTION
+            SettingsSectionTitle("BACKGROUND & WALLPAPER")
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                cornerRadius = 24.dp,
+                backgroundColor = GlassSurface
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Background Style",
+                                color = TextPrimary,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Pure black by default, presets, or custom photos",
+                                color = TextTertiary,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        // Badge showing current background
+                        val currentPreset = remember(settings.backgroundType) {
+                            BackgroundPreset.fromId(settings.backgroundType)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(accentColor.copy(alpha = 0.18f))
+                                .border(1.dp, accentColor.copy(alpha = 0.50f), CircleShape)
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = currentPreset.title,
+                                color = currentAccent.light,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // All Background Preset Options
+                    BackgroundPreset.entries.forEach { option ->
+                        val isSelected = settings.backgroundType.equals(option.id, ignoreCase = true)
+                        BackgroundOptionCard(
+                            preset = option,
+                            isSelected = isSelected,
+                            accentColor = accentColor,
+                            customPhotoPath = if (option == BackgroundPreset.CUSTOM_PHOTO) settings.customPhotoPath else null,
+                            onSelect = {
+                                haptic.buttonClick()
+                                if (option == BackgroundPreset.CUSTOM_PHOTO && settings.customPhotoPath.isNullOrEmpty()) {
+                                    backgroundPhotoPickerLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                } else {
+                                    preferencesManager.updateBackgroundType(option.id)
+                                }
+                            },
+                            onPickPhoto = {
+                                haptic.buttonClick()
+                                backgroundPhotoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            onRemovePhoto = {
+                                haptic.buttonClick()
+                                val file = File(context.filesDir, "custom_background.jpg")
+                                if (file.exists()) file.delete()
+                                preferencesManager.updateCustomPhotoPath(null)
+                                preferencesManager.updateBackgroundType(BackgroundPreset.BLACK.id)
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    // Background Dimming Scrim slider (visible when any non-black preset or custom photo is active)
+                    if (!settings.backgroundType.equals(BackgroundPreset.BLACK.id, ignoreCase = true)) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(Color.White.copy(alpha = 0.08f))
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Background Dimming",
+                                    color = TextPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Darkens wallpaper for high contrast & clarity",
+                                    color = TextTertiary,
+                                    fontSize = 12.sp
+                                )
+                            }
+
+                            Text(
+                                text = "${(settings.backgroundDim * 100).roundToInt()}%",
+                                color = currentAccent.light,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Slider(
+                            value = settings.backgroundDim,
+                            onValueChange = { newDim ->
+                                preferencesManager.updateBackgroundDim(newDim)
+                            },
+                            valueRange = 0.15f..0.85f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color.White,
+                                activeTrackColor = accentColor,
+                                inactiveTrackColor = Color.White.copy(alpha = 0.15f)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Quick "Reset to Default Black" button
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White.copy(alpha = 0.05f))
+                                .clickable {
+                                    haptic.buttonClick()
+                                    preferencesManager.updateBackgroundType(BackgroundPreset.BLACK.id)
+                                }
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Reset",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Reset to Default Black",
+                                color = TextSecondary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
@@ -1690,6 +1893,344 @@ private fun InterfaceStyleCard(
                         tint = DeepBlack,
                         modifier = Modifier.size(14.dp)
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Interactive card for selecting background presets or custom photo.
+ */
+@Composable
+private fun BackgroundOptionCard(
+    preset: BackgroundPreset,
+    isSelected: Boolean,
+    accentColor: Color,
+    customPhotoPath: String?,
+    onSelect: () -> Unit,
+    onPickPhoto: () -> Unit,
+    onRemovePhoto: () -> Unit
+) {
+    val currentAccent = LocalAccentColor.current
+    val hasCustomPhoto = preset == BackgroundPreset.CUSTOM_PHOTO &&
+            !customPhotoPath.isNullOrEmpty() && File(customPhotoPath).exists()
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (isSelected) {
+                    Brush.horizontalGradient(
+                        listOf(
+                            accentColor.copy(alpha = 0.18f),
+                            accentColor.copy(alpha = 0.08f)
+                        )
+                    )
+                } else {
+                    Brush.linearGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.04f),
+                            Color.White.copy(alpha = 0.02f)
+                        )
+                    )
+                }
+            )
+            .border(
+                width = if (isSelected) 1.5.dp else 1.dp,
+                color = if (isSelected) accentColor.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onSelect
+            )
+            .padding(12.dp)
+            .testTag("bg_option_${preset.id.lowercase().replace(' ', '_')}")
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Mini Thumbnail Preview
+                BackgroundThumbnailPreview(
+                    preset = preset,
+                    accentColor = accentColor,
+                    customPhotoPath = customPhotoPath
+                )
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = preset.title,
+                            color = if (isSelected) TextPrimary else TextSecondary,
+                            fontSize = 15.sp,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                        )
+
+                        if (preset == BackgroundPreset.BLACK) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (isSelected) accentColor.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "DEFAULT",
+                                    color = if (isSelected) currentAccent.light else TextTertiary,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = if (hasCustomPhoto) "Custom photo active" else preset.subtitle,
+                        color = if (isSelected) TextSecondary else TextTertiary,
+                        fontSize = 12.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Selection Radio / Check Indicator
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isSelected) accentColor else Color.Transparent
+                        )
+                        .border(
+                            width = 1.5.dp,
+                            color = if (isSelected) accentColor else Color.White.copy(alpha = 0.35f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Selected",
+                            tint = DeepBlack,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
+
+            // Custom Photo Action Buttons (Shown when Custom Photo option is selected)
+            if (preset == BackgroundPreset.CUSTOM_PHOTO && isSelected) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Pick / Change Photo button
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(accentColor.copy(alpha = 0.20f))
+                            .border(1.dp, accentColor.copy(alpha = 0.40f), RoundedCornerShape(10.dp))
+                            .clickable { onPickPhoto() }
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "Choose Photo",
+                            tint = currentAccent.light,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (hasCustomPhoto) "Change Photo" else "Choose from Gallery",
+                            color = currentAccent.light,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    // Remove Photo button (if photo is set)
+                    if (hasCustomPhoto) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color.White.copy(alpha = 0.08f))
+                                .clickable { onRemovePhoto() }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Remove Photo",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Remove",
+                                color = TextSecondary,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Miniature visual thumbnail preview of background presets and custom photo.
+ */
+@Composable
+private fun BackgroundThumbnailPreview(
+    preset: BackgroundPreset,
+    accentColor: Color,
+    customPhotoPath: String?
+) {
+    Box(
+        modifier = Modifier
+            .size(46.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        when (preset) {
+            BackgroundPreset.BLACK -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                )
+            }
+
+            BackgroundPreset.COSMOS -> {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF030408))
+                ) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            listOf(Color(0xFF8B5CF6).copy(alpha = 0.7f), Color.Transparent),
+                            center = Offset(size.width * 0.7f, size.height * 0.3f),
+                            radius = size.width * 0.6f
+                        )
+                    )
+                    drawCircle(color = Color.White, radius = 1.2f, center = Offset(size.width * 0.3f, size.height * 0.3f))
+                    drawCircle(color = Color.White, radius = 1.5f, center = Offset(size.width * 0.7f, size.height * 0.6f))
+                    drawCircle(color = Color.White, radius = 1.0f, center = Offset(size.width * 0.4f, size.height * 0.75f))
+                }
+            }
+
+            BackgroundPreset.CYBER_GRID -> {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF04060C))
+                ) {
+                    val horizon = size.height * 0.5f
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            listOf(accentColor.copy(alpha = 0.6f), Color.Transparent),
+                            center = Offset(size.width * 0.5f, horizon),
+                            radius = size.width * 0.5f
+                        )
+                    )
+                    drawLine(accentColor.copy(alpha = 0.5f), Offset(0f, horizon), Offset(size.width, horizon), 1f)
+                    drawLine(accentColor.copy(alpha = 0.3f), Offset(0f, size.height * 0.75f), Offset(size.width, size.height * 0.75f), 1f)
+                    drawLine(accentColor.copy(alpha = 0.3f), Offset(size.width * 0.5f, horizon), Offset(size.width * 0.2f, size.height), 1f)
+                    drawLine(accentColor.copy(alpha = 0.3f), Offset(size.width * 0.5f, horizon), Offset(size.width * 0.8f, size.height), 1f)
+                }
+            }
+
+            BackgroundPreset.AURORA_WAVE -> {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF04060E))
+                ) {
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            listOf(accentColor.copy(alpha = 0.5f), Color(0xFF6366F1).copy(alpha = 0.4f), Color.Transparent),
+                            start = Offset(0f, 0f),
+                            end = Offset(size.width, size.height)
+                        )
+                    )
+                }
+            }
+
+            BackgroundPreset.MIDNIGHT_DEEP -> {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF020409))
+                ) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            listOf(Color(0xFF1E3A8A).copy(alpha = 0.6f), Color.Transparent),
+                            center = Offset(size.width * 0.5f, size.height * 0.5f),
+                            radius = size.width * 0.5f
+                        )
+                    )
+                }
+            }
+
+            BackgroundPreset.MINIMAL_SLATE -> {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF0F1117))
+                ) {
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            listOf(Color(0xFF1F2430), Color(0xFF0F1117)),
+                            start = Offset(0f, 0f),
+                            end = Offset(size.width, size.height)
+                        )
+                    )
+                }
+            }
+
+            BackgroundPreset.CUSTOM_PHOTO -> {
+                val file = if (!customPhotoPath.isNullOrEmpty()) File(customPhotoPath) else null
+                if (file != null && file.exists()) {
+                    AsyncImage(
+                        model = file,
+                        contentDescription = "Custom photo thumbnail",
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.White.copy(alpha = 0.06f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "Custom Photo",
+                            tint = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }

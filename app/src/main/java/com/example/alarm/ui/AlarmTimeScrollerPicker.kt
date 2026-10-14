@@ -153,14 +153,32 @@ fun AlarmTimePickerScroller(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Next alarm subtitle banner (e.g. "Next alarm in 7 hours 8 minutes")
-        Text(
-            text = subtitle,
-            color = TextSecondary,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
+        // Next alarm countdown badge
+        Box(
+            modifier = Modifier
+                .padding(bottom = 12.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(accentColor.copy(alpha = 0.12f))
+                .border(1.dp, accentColor.copy(alpha = 0.30f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.AccessTime,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = subtitle,
+                    color = Color.White.copy(alpha = 0.90f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
 
         // Segmented Control Pill: [ 🔄 Scroller ]  [ ⌨️ Type ]
         Row(
@@ -332,6 +350,8 @@ fun AlarmTimePickerScroller(
 
 /**
  * 3-Column OxygenOS/iOS style 3D Wheel Picker for Alarm Time.
+ * Perfectly aligned horizontal selection band with sub-pixel vertical centering across
+ * Hours, Colon separator, Minutes, and AM/PM.
  */
 @Composable
 private fun AlarmScrollerColumns(
@@ -347,22 +367,27 @@ private fun AlarmScrollerColumns(
 ) {
     val accentColor = LocalAccentColor.current.primary
     val currentStyle = LocalInterfaceStyle.current
+    val density = LocalDensity.current
+
     val hourMin = if (is24Hour) 0 else 1
     val hourMax = if (is24Hour) 23 else 12
 
+    val itemHeight = 56.dp
+    val viewportHeight = 200.dp
     val bandShape = RoundedCornerShape(16.dp)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(210.dp),
+            .height(viewportHeight),
         contentAlignment = Alignment.Center
     ) {
         // Center horizontal highlight band (Adapts across Pure Minimal, Pure Liquid Glass, Mix Liquid)
+        // Its height matches itemHeight exactly, guaranteeing dead-center alignment.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(58.dp)
+                .height(itemHeight)
                 .clip(bandShape)
                 .then(
                     when (currentStyle) {
@@ -403,57 +428,85 @@ private fun AlarmScrollerColumns(
                 )
         )
 
+        // All columns share the exact same row with vertical centering, guaranteeing perfect alignment
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Hours Wheel Column
-            AlarmWheelColumn(
+            TimeWheelColumn(
                 value = displayHour,
                 minValue = hourMin,
                 maxValue = hourMax,
-                format = if (is24Hour) "%02d" else "%d",
+                formatValue = { if (is24Hour) String.format("%02d", it) else it.toString() },
                 onValueChange = onHourChange,
                 onTap = { onTapToType(FocusedTimeField.HOUR) },
                 haptic = haptic,
-                modifier = Modifier.width(76.dp)
+                itemHeight = itemHeight,
+                viewportHeight = viewportHeight,
+                modifier = Modifier.width(if (is24Hour) 80.dp else 72.dp)
             )
 
-            // Colon separator
-            Text(
-                text = ":",
-                color = Color.White.copy(alpha = 0.85f),
-                fontSize = 42.sp,
-                fontWeight = FontWeight.Light,
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
+            // Colon separator (locked inside a Box of exact same height itemHeight)
+            Box(
+                modifier = Modifier
+                    .width(if (is24Hour) 22.dp else 18.dp)
+                    .height(itemHeight),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = ":",
+                    color = Color.White.copy(alpha = 0.88f),
+                    fontSize = 38.sp,
+                    fontWeight = FontWeight.Light,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.graphicsLayer {
+                        // Optical baseline centering so colon dots align symmetrically with digit cap-height
+                        translationY = -2f * density.density
+                    }
+                )
+            }
 
             // Minutes Wheel Column
-            AlarmWheelColumn(
+            TimeWheelColumn(
                 value = minute,
                 minValue = 0,
                 maxValue = 59,
-                format = "%02d",
+                formatValue = { String.format("%02d", it) },
                 onValueChange = onMinuteChange,
                 onTap = { onTapToType(FocusedTimeField.MINUTE) },
                 haptic = haptic,
-                modifier = Modifier.width(76.dp)
+                itemHeight = itemHeight,
+                viewportHeight = viewportHeight,
+                modifier = Modifier.width(if (is24Hour) 80.dp else 72.dp)
             )
 
             // AM / PM Column (only for 12-hour format)
             if (!is24Hour) {
-                Spacer(modifier = Modifier.width(18.dp))
-                AmPmWheelColumn(
-                    isPm = isPm,
-                    onAmPmChange = onAmPmChange,
+                Spacer(modifier = Modifier.width(16.dp))
+                TimeWheelColumn(
+                    value = if (isPm) 1 else 0,
+                    minValue = 0,
+                    maxValue = 1,
+                    formatValue = { if (it == 1) "PM" else "AM" },
+                    onValueChange = { onAmPmChange(it == 1) },
+                    onTap = { onAmPmChange(!isPm) },
+                    isAmPm = true,
                     haptic = haptic,
-                    modifier = Modifier.width(64.dp)
+                    itemHeight = itemHeight,
+                    viewportHeight = viewportHeight,
+                    modifier = Modifier.width(68.dp)
                 )
             }
         }
 
-        // Top & Bottom gradient fades for 3D depth
+        // Top & Bottom gradient fades for authentic 3D depth and smooth entry/exit
+        val fadeColor = when (currentStyle) {
+            InterfaceStyle.MINIMAL -> Color(0xFF1C1C1E)
+            InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFF10121C).copy(alpha = 0.95f)
+            InterfaceStyle.MIX_LIQUID -> Color(0xFF14151C).copy(alpha = 0.95f)
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -461,7 +514,7 @@ private fun AlarmScrollerColumns(
                 .align(Alignment.TopCenter)
                 .background(
                     Brush.verticalGradient(
-                        0f to Color(0xFF101117).copy(alpha = 0.95f),
+                        0f to fadeColor,
                         1f to Color.Transparent
                     )
                 )
@@ -474,7 +527,7 @@ private fun AlarmScrollerColumns(
                 .background(
                     Brush.verticalGradient(
                         0f to Color.Transparent,
-                        1f to Color(0xFF101117).copy(alpha = 0.95f)
+                        1f to fadeColor
                     )
                 )
         )
@@ -482,304 +535,199 @@ private fun AlarmScrollerColumns(
 }
 
 /**
- * Individual Number Wheel Column with smooth vertical drag, fling, and cylindrical wrap.
+ * Universal High-Precision Wheel Column providing:
+ * 1. 1:1 true continuous sliding with zero skips, jumps, or stutter.
+ * 2. High-speed fling momentum that spins freely and softly settles on an exact integer.
+ * 3. Tactile haptic ticks on every single number that glides across the center.
+ * 4. Realistic 3D cylindrical perspective (rotationX, scale, opacity fading).
+ * 5. Tap-to-center for adjacent visible numbers.
  */
 @Composable
-private fun AlarmWheelColumn(
+private fun TimeWheelColumn(
     value: Int,
     minValue: Int,
     maxValue: Int,
-    format: String,
     onValueChange: (Int) -> Unit,
-    onTap: () -> Unit,
+    formatValue: (Int) -> String,
     haptic: HapticManager,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isAmPm: Boolean = false,
+    itemHeight: Dp = 56.dp,
+    viewportHeight: Dp = 200.dp,
+    onTap: (() -> Unit)? = null
 ) {
-    val count = maxValue - minValue + 1
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val itemHeight = 52.dp
     val itemHeightPx = with(density) { itemHeight.toPx() }
+    val rangeCount = maxValue - minValue + 1
 
-    val animOffsetY = remember { Animatable(0f) }
-    var currentVal by remember(value) { mutableIntStateOf(value) }
-    var accumulatedDrag by remember { mutableFloatStateOf(0f) }
-
-    LaunchedEffect(value) {
-        currentVal = value
+    fun wrapVal(raw: Int): Int {
+        val zeroBased = raw - minValue
+        val mod = ((zeroBased % rangeCount) + rangeCount) % rangeCount
+        return minValue + mod
     }
 
-    fun stepValue(current: Int, delta: Int): Int {
-        val zeroIndex = current - minValue
-        val newIndex = (zeroIndex + delta + count * 100) % count
-        return minValue + newIndex
+    // Continuous pixel offset from base anchor
+    val scrollOffset = remember { Animatable(0f) }
+    var baseValue by remember(value) { mutableIntStateOf(value) }
+    var isDragging by remember { mutableStateOf(false) }
+    var lastReportedValue by remember(value) { mutableIntStateOf(value) }
+
+    LaunchedEffect(value) {
+        if (!isDragging && value != baseValue) {
+            baseValue = value
+            scrollOffset.snapTo(0f)
+            lastReportedValue = value
+        }
+    }
+
+    val currentOffset = scrollOffset.value
+    // Dragging DOWN (positive offset) means smaller/previous numbers come down to center
+    val totalItemsShifted = -currentOffset / itemHeightPx
+    val centerStep = totalItemsShifted.roundToInt()
+    val currentCenterVal = wrapVal(baseValue + centerStep)
+
+    // Sub-item pixel offset from the current integer center
+    val pixelOffsetFromCenter = currentOffset + (centerStep * itemHeightPx)
+
+    // Trigger crisp haptic tick whenever a number passes the center threshold
+    LaunchedEffect(currentCenterVal) {
+        if (currentCenterVal != lastReportedValue) {
+            lastReportedValue = currentCenterVal
+            haptic.sliderTick()
+            onValueChange(currentCenterVal)
+        }
     }
 
     Box(
         modifier = modifier
-            .height(itemHeight * 3.8f)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onTap
-            )
-            .pointerInput(count) {
+            .height(viewportHeight)
+            .pointerInput(rangeCount) {
                 var velocityTracker = VelocityTracker()
                 detectVerticalDragGestures(
                     onDragStart = {
+                        isDragging = true
                         velocityTracker = VelocityTracker()
-                        accumulatedDrag = 0f
                     },
                     onDragEnd = {
                         val velocityY = velocityTracker.calculateVelocity().y
+                        isDragging = false
                         coroutineScope.launch {
-                            if (abs(velocityY) > 600f) {
-                                val steps = (-velocityY / 500f).roundToInt().coerceIn(-8, 8)
-                                if (steps != 0) {
-                                    val nextVal = stepValue(currentVal, steps)
-                                    currentVal = nextVal
-                                    onValueChange(nextVal)
-                                    haptic.sliderSnap()
-                                }
+                            // Authentic inertia / fling momentum
+                            val flingPixels = if (abs(velocityY) > 300f) {
+                                (velocityY * 0.22f).coerceIn(-itemHeightPx * 12f, itemHeightPx * 12f)
+                            } else {
+                                0f
                             }
-                            animOffsetY.animateTo(
-                                targetValue = 0f,
+                            val projectedOffset = scrollOffset.value + flingPixels
+                            val projectedStep = (-projectedOffset / itemHeightPx).roundToInt()
+                            val finalSnapTarget = -projectedStep * itemHeightPx
+
+                            scrollOffset.animateTo(
+                                targetValue = finalSnapTarget,
                                 animationSpec = spring(
                                     dampingRatio = Spring.DampingRatioLowBouncy,
-                                    stiffness = Spring.StiffnessMedium
+                                    stiffness = Spring.StiffnessMediumLow
                                 )
                             )
-                            accumulatedDrag = 0f
+
+                            val finalVal = wrapVal(baseValue + projectedStep)
+                            baseValue = finalVal
+                            scrollOffset.snapTo(0f)
+                            onValueChange(finalVal)
+                            haptic.sliderSnap()
                         }
                     },
                     onDragCancel = {
+                        isDragging = false
                         coroutineScope.launch {
-                            animOffsetY.animateTo(0f)
-                            accumulatedDrag = 0f
+                            val currentStepInt = (-scrollOffset.value / itemHeightPx).roundToInt()
+                            val finalSnapTarget = -currentStepInt * itemHeightPx
+                            scrollOffset.animateTo(
+                                targetValue = finalSnapTarget,
+                                animationSpec = spring(dampingRatio = 0.8f)
+                            )
+                            val finalVal = wrapVal(baseValue + currentStepInt)
+                            baseValue = finalVal
+                            scrollOffset.snapTo(0f)
+                            onValueChange(finalVal)
                         }
                     },
                     onVerticalDrag = { change, dragAmount ->
                         change.consume()
                         velocityTracker.addPosition(change.uptimeMillis, change.position)
-                        accumulatedDrag += dragAmount
-
                         coroutineScope.launch {
-                            animOffsetY.snapTo(accumulatedDrag)
-                        }
-
-                        if (abs(accumulatedDrag) >= itemHeightPx * 0.5f) {
-                            val step = if (accumulatedDrag > 0) -1 else 1
-                            val nextVal = stepValue(currentVal, step)
-                            currentVal = nextVal
-                            onValueChange(nextVal)
-                            haptic.sliderTick()
-                            accumulatedDrag -= (-step) * itemHeightPx * 0.5f
+                            scrollOffset.snapTo(scrollOffset.value + dragAmount)
                         }
                     }
                 )
             },
         contentAlignment = Alignment.Center
     ) {
-        // Items above and below for 3D roll
-        val valMinus2 = stepValue(currentVal, -2)
-        val valMinus1 = stepValue(currentVal, -1)
-        val valPlus1 = stepValue(currentVal, 1)
-        val valPlus2 = stepValue(currentVal, 2)
+        // Render 5 items (-2, -1, 0, +1, +2) with continuous smooth 3D cylindrical roll
+        for (k in -2..2) {
+            val itemVal = wrapVal(currentCenterVal + k)
+            val yPos = (k * itemHeightPx) + pixelOffsetFromCenter
+            val distFraction = (yPos / (itemHeightPx * 2.2f)).coerceIn(-1.2f, 1.2f)
+            val absDist = abs(distFraction)
 
-        Column(
-            modifier = Modifier.graphicsLayer {
-                translationY = animOffsetY.value
-            },
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Far item above (-2)
-            Text(
-                text = String.format(format, valMinus2),
-                color = TextTertiary,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Light,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .height(itemHeight * 0.7f)
-                    .graphicsLayer {
-                        alpha = 0.22f
-                        scaleX = 0.75f
-                        scaleY = 0.75f
-                    }
-            )
+            val rotX = (-distFraction * 36f).coerceIn(-60f, 60f)
+            val scale = (1.05f - (absDist * 0.22f)).coerceIn(0.72f, 1.05f)
+            val alpha = (1.0f - (absDist * 0.58f)).coerceIn(0.18f, 1.0f)
+            val isClosest = abs(yPos) < itemHeightPx * 0.45f
 
-            // Item directly above (-1)
-            Text(
-                text = String.format(format, valMinus1),
-                color = TextSecondary,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Normal,
-                textAlign = TextAlign.Center,
+            Box(
                 modifier = Modifier
+                    .fillMaxWidth()
                     .height(itemHeight)
                     .graphicsLayer {
-                        alpha = 0.45f
-                        scaleX = 0.84f
-                        scaleY = 0.84f
+                        translationY = yPos
+                        rotationX = rotX
+                        scaleX = scale
+                        scaleY = scale
+                        this.alpha = alpha
+                        cameraDistance = 14f * density.density
                     }
-            )
-
-            // Center Selected Item (0)
-            Text(
-                text = String.format(format, currentVal),
-                color = Color.White,
-                fontSize = 44.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .height(itemHeight)
-                    .graphicsLayer {
-                        scaleX = 1.06f
-                        scaleY = 1.06f
-                    }
-            )
-
-            // Item directly below (+1)
-            Text(
-                text = String.format(format, valPlus1),
-                color = TextSecondary,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Normal,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .height(itemHeight)
-                    .graphicsLayer {
-                        alpha = 0.45f
-                        scaleX = 0.84f
-                        scaleY = 0.84f
-                    }
-            )
-
-            // Far item below (+2)
-            Text(
-                text = String.format(format, valPlus2),
-                color = TextTertiary,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Light,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .height(itemHeight * 0.7f)
-                    .graphicsLayer {
-                        alpha = 0.22f
-                        scaleX = 0.75f
-                        scaleY = 0.75f
-                    }
-            )
-        }
-    }
-}
-
-/**
- * AM / PM Wheel Column with smooth vertical drag / click toggle.
- */
-@Composable
-private fun AmPmWheelColumn(
-    isPm: Boolean,
-    onAmPmChange: (Boolean) -> Unit,
-    haptic: HapticManager,
-    modifier: Modifier = Modifier
-) {
-    val coroutineScope = rememberCoroutineScope()
-    val density = LocalDensity.current
-    val itemHeight = 52.dp
-    val itemHeightPx = with(density) { itemHeight.toPx() }
-
-    val animOffsetY = remember { Animatable(0f) }
-    var accumulatedDrag by remember { mutableFloatStateOf(0f) }
-
-    Box(
-        modifier = modifier
-            .height(itemHeight * 3.2f)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = {
-                    haptic.buttonClick()
-                    onAmPmChange(!isPm)
-                }
-            )
-            .pointerInput(isPm) {
-                detectVerticalDragGestures(
-                    onDragStart = { accumulatedDrag = 0f },
-                    onDragEnd = {
-                        coroutineScope.launch {
-                            animOffsetY.animateTo(0f, spring(dampingRatio = 0.8f))
-                            accumulatedDrag = 0f
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        if (!isClosest) {
+                            // Tapping an adjacent item rolls it smoothly to the center
+                            haptic.buttonClick()
+                            coroutineScope.launch {
+                                val targetDelta = -k * itemHeightPx
+                                scrollOffset.animateTo(
+                                    targetValue = scrollOffset.value + targetDelta,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    )
+                                )
+                                val newCenterVal = wrapVal(baseValue + centerStep + k)
+                                baseValue = newCenterVal
+                                scrollOffset.snapTo(0f)
+                                onValueChange(newCenterVal)
+                            }
+                        } else if (onTap != null) {
+                            onTap()
                         }
                     },
-                    onDragCancel = {
-                        coroutineScope.launch {
-                            animOffsetY.animateTo(0f)
-                            accumulatedDrag = 0f
-                        }
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = formatValue(itemVal),
+                    color = if (isClosest) Color.White else TextSecondary,
+                    fontSize = if (isAmPm) {
+                        if (isClosest) 23.sp else 19.sp
+                    } else {
+                        if (isClosest) 40.sp else 31.sp
                     },
-                    onVerticalDrag = { change, dragAmount ->
-                        change.consume()
-                        accumulatedDrag += dragAmount
-
-                        coroutineScope.launch {
-                            animOffsetY.snapTo(accumulatedDrag)
-                        }
-
-                        if (abs(accumulatedDrag) >= itemHeightPx * 0.4f) {
-                            onAmPmChange(!isPm)
-                            haptic.sliderTick()
-                            accumulatedDrag = 0f
-                        }
-                    }
+                    fontWeight = if (isClosest) FontWeight.SemiBold else FontWeight.Normal,
+                    fontFamily = FontFamily.SansSerif,
+                    textAlign = TextAlign.Center
                 )
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            modifier = Modifier.graphicsLayer {
-                translationY = animOffsetY.value
-            },
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Other option (above)
-            Text(
-                text = if (isPm) "AM" else "PM",
-                color = TextSecondary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier
-                    .height(itemHeight)
-                    .graphicsLayer {
-                        alpha = 0.4f
-                        scaleX = 0.85f
-                        scaleY = 0.85f
-                    }
-            )
-
-            // Current Selected (center)
-            Text(
-                text = if (isPm) "PM" else "AM",
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.height(itemHeight)
-            )
-
-            // Other option (below)
-            Text(
-                text = if (isPm) "AM" else "PM",
-                color = TextSecondary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier
-                    .height(itemHeight)
-                    .graphicsLayer {
-                        alpha = 0.4f
-                        scaleX = 0.85f
-                        scaleY = 0.85f
-                    }
-            )
+            }
         }
     }
 }

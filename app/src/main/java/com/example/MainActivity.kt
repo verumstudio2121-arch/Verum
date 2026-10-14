@@ -56,6 +56,7 @@ import com.example.stopwatch.StopwatchScreen
 import com.example.stopwatch.StopwatchViewModel
 import com.example.timer.TimerScreen
 import com.example.timer.TimerViewModel
+import com.example.ui.background.AppBackground
 import com.example.ui.theme.AccentColorTheme
 import com.example.ui.theme.ClockNavTab
 import com.example.ui.theme.DeepBlack
@@ -117,46 +118,15 @@ class MainActivity : ComponentActivity() {
                     val stopwatchViewModel: StopwatchViewModel = viewModel()
                     val timerViewModel: TimerViewModel = remember { TimerViewModel(applicationContext) }
 
-                    val mainBg = when (currentInterfaceStyle) {
-                        InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFF060810)
-                        InterfaceStyle.MINIMAL -> Color(0xFF000000)
-                        InterfaceStyle.MIX_LIQUID -> DeepBlack
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(mainBg)
-                            .then(
-                                if (currentInterfaceStyle == InterfaceStyle.PURE_LIQUID_GLASS) {
-                                    Modifier.drawBehind {
-                                        drawCircle(
-                                            brush = Brush.radialGradient(
-                                                colors = listOf(
-                                                    currentAccent.primary.copy(alpha = 0.12f),
-                                                    currentAccent.dark.copy(alpha = 0.04f),
-                                                    Color.Transparent
-                                                ),
-                                                center = Offset(size.width * 0.5f, size.height * 0.25f),
-                                                radius = size.width * 0.85f
-                                            )
-                                        )
-                                        drawCircle(
-                                            brush = Brush.radialGradient(
-                                                colors = listOf(
-                                                    currentAccent.light.copy(alpha = 0.08f),
-                                                    Color.Transparent
-                                                ),
-                                                center = Offset(size.width * 0.8f, size.height * 0.80f),
-                                                radius = size.width * 0.65f
-                                            )
-                                        )
-                                    }
-                                } else {
-                                    Modifier
-                                }
-                            )
-                    ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Global dynamic background layer (Pure Black by default, presets & custom photo)
+                        AppBackground(
+                            backgroundType = settings.backgroundType,
+                            customPhotoPath = settings.customPhotoPath,
+                            backgroundDim = settings.backgroundDim,
+                            interfaceStyle = currentInterfaceStyle,
+                            accentTheme = currentAccent
+                        )
                         if (inSettings) {
                             SettingsScreen(
                                 preferencesManager = preferencesManager,

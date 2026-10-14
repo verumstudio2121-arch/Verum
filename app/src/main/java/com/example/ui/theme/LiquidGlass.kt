@@ -10,6 +10,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -73,6 +75,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.util.LocalHapticManager
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -940,6 +943,7 @@ fun LiquidFloatingNavBar(
     var isDragging by remember { mutableStateOf(false) }
     var dragFraction by remember { mutableFloatStateOf(selectedIndex.toFloat()) }
     var lastHapticIndex by remember { mutableIntStateOf(selectedIndex) }
+    var pressedTabIndex by remember { mutableStateOf<Int?>(null) }
 
     // Liquid stretching capsule bounds (start and end edge animations)
     val animStart = remember { Animatable(selectedIndex.toFloat()) }
@@ -1131,78 +1135,103 @@ fun LiquidFloatingNavBar(
             val offsetX = tabWidth * currentStart
             val pillWidth = tabWidth * span
 
-            // Interactive horizontal sliding gesture on navigation bar
-            val dragModifier = Modifier.pointerInput(tabWidthPx) {
-                detectHorizontalDragGestures(
-                    onDragStart = { offset ->
-                        isDragging = true
-                        haptic.sliderDragStart()
-                        val startFrac = (offset.x / tabWidthPx - 0.5f).coerceIn(0f, (tabCount - 1).toFloat())
-                        dragFraction = startFrac
-                        lastHapticIndex = startFrac.roundToInt().coerceIn(0, tabCount - 1)
-                        coroutineScope.launch {
-                            animStart.snapTo(startFrac)
-                            animEnd.snapTo(startFrac + 1f)
-                        }
-                    },
-                    onDragEnd = {
-                        isDragging = false
-                        val targetIndex = dragFraction.roundToInt().coerceIn(0, tabCount - 1)
-                        haptic.sliderSnap()
-                        onTabSelected(tabs[targetIndex])
-                        coroutineScope.launch {
-                            animStart.animateTo(
-                                targetValue = targetIndex.toFloat(),
-                                animationSpec = spring(dampingRatio = 0.72f, stiffness = 340f)
-                            )
-                        }
-                        coroutineScope.launch {
-                            animEnd.animateTo(
-                                targetValue = (targetIndex + 1).toFloat(),
-                                animationSpec = spring(dampingRatio = 0.68f, stiffness = 360f)
-                            )
-                        }
-                    },
-                    onDragCancel = {
-                        isDragging = false
-                        val targetIndex = selectedIndex
-                        coroutineScope.launch {
-                            animStart.animateTo(
-                                targetValue = targetIndex.toFloat(),
-                                animationSpec = spring(dampingRatio = 0.75f, stiffness = 300f)
-                            )
-                        }
-                        coroutineScope.launch {
-                            animEnd.animateTo(
-                                targetValue = (targetIndex + 1).toFloat(),
-                                animationSpec = spring(dampingRatio = 0.75f, stiffness = 300f)
-                            )
-                        }
-                    },
-                    onHorizontalDrag = { change, dragAmount ->
-                        change.consume()
-                        val deltaFrac = dragAmount / tabWidthPx
-                        val newFrac = (dragFraction + deltaFrac).coerceIn(0f, (tabCount - 1).toFloat())
-                        dragFraction = newFrac
+            // Interactive horizontal sliding gesture & instant tap handler on navigation bar
+            val navGestureModifier = Modifier.pointerInput(tabWidthPx, tabCount) {
+                if (tabWidthPx <= 0f) return@pointerInput
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val downX = down.position.x
+                    var currentX = downX
+                    var hasDragged = false
+                    val touchSlop = viewConfiguration.touchSlop
 
-                        val currentHovered = newFrac.roundToInt().coerceIn(0, tabCount - 1)
-                        if (currentHovered != lastHapticIndex) {
-                            lastHapticIndex = currentHovered
-                            haptic.buttonClick()
-                            haptic.sliderTick()
-                        }
+                    val touchedTab = (downX / tabWidthPx).toInt().coerceIn(0, tabCount - 1)
+                    pressedTabIndex = touchedTab
 
-                        coroutineScope.launch {
-                            if (deltaFrac > 0) {
-                                animEnd.snapTo((newFrac + 1f + deltaFrac * 1.5f).coerceAtMost(tabCount.toFloat()))
-                                animStart.snapTo(newFrac)
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+
+                        if (!change.pressed) {
+                            pressedTabIndex = null
+                            if (hasDragged) {
+                                isDragging = false
+                                val targetIndex = dragFraction.roundToInt().coerceIn(0, tabCount - 1)
+                                haptic.sliderSnap()
+                                onTabSelected(tabs[targetIndex])
+                                coroutineScope.launch {
+                                    animStart.animateTo(
+                                        targetValue = targetIndex.toFloat(),
+                                        animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f)
+                                    )
+                                }
+                                coroutineScope.launch {
+                                    animEnd.animateTo(
+                                        targetValue = (targetIndex + 1).toFloat(),
+                                        animationSpec = spring(dampingRatio = 0.68f, stiffness = 400f)
+                                    )
+                                }
                             } else {
-                                animStart.snapTo((newFrac + deltaFrac * 1.5f).coerceAtLeast(0f))
-                                animEnd.snapTo(newFrac + 1f)
+                                val tappedIndex = (downX / tabWidthPx).toInt().coerceIn(0, tabCount - 1)
+                                haptic.buttonClick()
+                                onTabSelected(tabs[tappedIndex])
+                            }
+                            change.consume()
+                            break
+                        } else {
+                            val newX = change.position.x
+                            val totalDeltaX = newX - downX
+
+                            if (!hasDragged && abs(totalDeltaX) > touchSlop) {
+                                hasDragged = true
+                                isDragging = true
+                                haptic.sliderDragStart()
+                                val initialCenter = (newX / tabWidthPx).coerceIn(0.5f, tabCount - 0.5f)
+                                val frac = initialCenter - 0.5f
+                                dragFraction = frac
+                                lastHapticIndex = frac.roundToInt().coerceIn(0, tabCount - 1)
+                                coroutineScope.launch {
+                                    animStart.snapTo(frac)
+                                    animEnd.snapTo(frac + 1f)
+                                }
+                            }
+
+                            if (hasDragged) {
+                                val deltaX = newX - currentX
+                                currentX = newX
+                                change.consume()
+
+                                val currentCenter = (newX / tabWidthPx).coerceIn(0.5f, tabCount - 0.5f)
+                                val frac = currentCenter - 0.5f
+                                dragFraction = frac
+                                pressedTabIndex = frac.roundToInt().coerceIn(0, tabCount - 1)
+
+                                val currentHovered = frac.roundToInt().coerceIn(0, tabCount - 1)
+                                if (currentHovered != lastHapticIndex) {
+                                    lastHapticIndex = currentHovered
+                                    haptic.buttonClick()
+                                    haptic.sliderTick()
+                                }
+
+                                val deltaFrac = deltaX / tabWidthPx
+                                coroutineScope.launch {
+                                    if (deltaFrac > 0) {
+                                        val stretchLead = (deltaFrac * 1.8f).coerceAtMost(0.45f)
+                                        animEnd.snapTo((frac + 1f + stretchLead).coerceAtMost(tabCount.toFloat()))
+                                        animStart.snapTo(frac)
+                                    } else if (deltaFrac < 0) {
+                                        val stretchTrail = (deltaFrac * 1.8f).coerceAtLeast(-0.45f)
+                                        animStart.snapTo((frac + stretchTrail).coerceAtLeast(0f))
+                                        animEnd.snapTo(frac + 1f)
+                                    } else {
+                                        animStart.snapTo(frac)
+                                        animEnd.snapTo(frac + 1f)
+                                    }
+                                }
                             }
                         }
                     }
-                )
+                }
             }
 
             // Animated morphing liquid light blue glass capsule
@@ -1312,10 +1341,11 @@ fun LiquidFloatingNavBar(
                     )
             )
 
-            // Navigation items row with drag interaction overlay
-            // Navigation items row
+            // Navigation items row with integrated drag & tap gesture modifier
             Row(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(navGestureModifier),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1328,8 +1358,7 @@ fun LiquidFloatingNavBar(
                 tabs.forEach { tab ->
                     val tabIdx = tabs.indexOf(tab)
                     val isSelected = (tab == selectedTab) || (tabIdx == highlightedIndex)
-                    val interactionSource = remember { MutableInteractionSource() }
-                    val isPressed by interactionSource.collectIsPressedAsState()
+                    val isPressed = (pressedTabIndex == tabIdx)
 
                     // Tactile press bounce
                     val buttonPressScale by animateFloatAsState(
@@ -1381,15 +1410,7 @@ fun LiquidFloatingNavBar(
                                 scaleY = buttonPressScale
                             }
                             .clip(CircleShape)
-                            .testTag("nav_tab_${tab.name.lowercase()}")
-                            .clickable(
-                                interactionSource = interactionSource,
-                                indication = null,
-                                onClick = {
-                                    haptic.buttonClick()
-                                    onTabSelected(tab)
-                                }
-                            ),
+                            .testTag("nav_tab_${tab.name.lowercase()}"),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
