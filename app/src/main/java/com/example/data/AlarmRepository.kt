@@ -62,7 +62,19 @@ class AlarmRepository(private val context: Context) {
             prefs.edit().putBoolean("has_initialized_defaults", true).apply()
             persistAlarms(loaded)
             // Schedule any enabled defaults
-            defaultAlarms.filter { it.isEnabled }.forEach { scheduler.schedule(it) }
+        }
+
+        val now = System.currentTimeMillis()
+        var cleaned = false
+        for (i in loaded.indices) {
+            val a = loaded[i]
+            if (a.skippedUntilEpochMillis in 1..now) {
+                loaded[i] = a.copy(skippedUntilEpochMillis = 0L)
+                cleaned = true
+            }
+        }
+        if (cleaned) {
+            persistAlarms(loaded)
         }
 
         _alarms.value = loaded.sortedWith(compareBy({ it.hour }, { it.minute }))
@@ -107,7 +119,10 @@ class AlarmRepository(private val context: Context) {
         val current = _alarms.value.toMutableList()
         val index = current.indexOfFirst { it.id == id }
         if (index != -1) {
-            val updated = current[index].copy(isEnabled = enabled)
+            val updated = current[index].copy(
+                isEnabled = enabled,
+                skippedUntilEpochMillis = if (enabled) 0L else current[index].skippedUntilEpochMillis
+            )
             current[index] = updated
             _alarms.value = current
             persistAlarms(current)
@@ -117,6 +132,74 @@ class AlarmRepository(private val context: Context) {
             } else {
                 scheduler.cancel(updated)
             }
+        }
+    }
+
+    /**
+     * FEATURE 1: OPTION 1 - ONLY FOR TOMORROW
+     * Temporarily skips the next scheduled occurrence without changing repeat settings.
+     * Automatically schedules for the subsequent occurrence so it resumes normal schedule.
+     */
+    fun skipAlarmTomorrow(id: String) {
+        val current = _alarms.value.toMutableList()
+        val index = current.indexOfFirst { it.id == id }
+        if (index != -1) {
+            val alarm = current[index]
+            // Calculate when the next occurrence would be
+            val nextOccurrence = alarm.getNextTriggerEpochMillis()
+            // Set skip boundary to just after the skipped occurrence (+1 minute)
+            val updated = alarm.copy(
+                isEnabled = true,
+                skippedUntilEpochMillis = nextOccurrence + 60_000L
+            )
+            current[index] = updated
+            _alarms.value = current
+            persistAlarms(current)
+
+            // Reschedule so AlarmManager targets the subsequent occurrence (for repeat alarms)
+            // or cancels if one-time
+            if (updated.repeatType == "Once") {
+                scheduler.cancel(alarm)
+            } else {
+                scheduler.schedule(updated)
+            }
+        }
+    }
+
+    /**
+     * FEATURE 1: OPTION 2 - UNTIL I TURN IT ON AGAIN
+     * Permanently disables the alarm until manually enabled.
+     */
+    fun disableAlarmPermanently(id: String) {
+        val current = _alarms.value.toMutableList()
+        val index = current.indexOfFirst { it.id == id }
+        if (index != -1) {
+            val updated = current[index].copy(
+                isEnabled = false,
+                skippedUntilEpochMillis = 0L
+            )
+            current[index] = updated
+            _alarms.value = current
+            persistAlarms(current)
+            scheduler.cancel(updated)
+        }
+    }
+
+    /**
+     * Restores an active schedule if alarm was temporarily skipped.
+     */
+    fun unskipAlarm(id: String) {
+        val current = _alarms.value.toMutableList()
+        val index = current.indexOfFirst { it.id == id }
+        if (index != -1) {
+            val updated = current[index].copy(
+                isEnabled = true,
+                skippedUntilEpochMillis = 0L
+            )
+            current[index] = updated
+            _alarms.value = current
+            persistAlarms(current)
+            scheduler.schedule(updated)
         }
     }
 
@@ -136,8 +219,27 @@ class AlarmRepository(private val context: Context) {
     }
 
     fun rescheduleAllEnabledAlarms() {
-        _alarms.value.filter { it.isEnabled }.forEach {
-            scheduler.schedule(it)
+        val now = System.currentTimeMillis()
+        val current = _alarms.value.toMutableList()
+        var changed = false
+        for (i in current.indices) {
+            val a = current[i]
+            if (a.skippedUntilEpochMillis in 1..now) {
+                current[i] = a.copy(skippedUntilEpochMillis = 0L)
+                changed = true
+            }
+        }
+        if (changed) {
+            _alarms.value = current
+            persistAlarms(current)
+        }
+
+        current.filter { it.isEnabled }.forEach { alarm ->
+            if (alarm.repeatType == "Once" && alarm.isTemporarilySkipped()) {
+                scheduler.cancel(alarm)
+            } else {
+                scheduler.schedule(alarm)
+            }
         }
     }
 }

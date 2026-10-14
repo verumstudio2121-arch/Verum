@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -110,24 +111,61 @@ fun WorldClockScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Edit / Done toggle
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(GlassSurface)
-                        .border(1.dp, GlassBorder, CircleShape)
-                        .clickable {
-                            haptic.buttonClick()
-                            isEditMode = !isEditMode
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // In-app HiTech Clock Logo (Displays custom gallery photo if active)
+                    val customLogoBitmap = com.example.util.LocalInAppLogoBitmap.current
+                    val accentColor = com.example.ui.theme.LocalAccentColor.current.primary
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(Color(0xFF090B12))
+                            .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(11.dp))
+                            .clickable {
+                                haptic.buttonClick()
+                                onOpenSettings()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (customLogoBitmap != null) {
+                            androidx.compose.foundation.Image(
+                                bitmap = customLogoBitmap.asImageBitmap(),
+                                contentDescription = "HiTech Clock Logo",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(11.dp)),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                        } else {
+                            androidx.compose.foundation.Image(
+                                painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_app_logo),
+                                contentDescription = "HiTech Clock Logo",
+                                modifier = Modifier.size(34.dp)
+                            )
                         }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = if (isEditMode) "Done" else "Edit",
-                        color = if (isEditMode) Color.White else TextSecondary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    // Edit / Done toggle
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(GlassSurface)
+                            .border(1.dp, GlassBorder, CircleShape)
+                            .clickable {
+                                haptic.buttonClick()
+                                isEditMode = !isEditMode
+                            }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = if (isEditMode) "Done" else "Edit",
+                            color = if (isEditMode) Color.White else TextSecondary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {

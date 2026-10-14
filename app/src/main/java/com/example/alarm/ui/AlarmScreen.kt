@@ -80,6 +80,13 @@ import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
 import com.example.util.LocalHapticManager
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import com.example.R
+import com.example.util.LocalInAppLogoBitmap
+
 @Composable
 fun AlarmScreen(
     repository: AlarmRepository,
@@ -90,6 +97,7 @@ fun AlarmScreen(
     var isEditMode by remember { mutableStateOf(false) }
     var editingAlarm by remember { mutableStateOf<AlarmModel?>(null) }
     var isCreatingAlarm by remember { mutableStateOf(false) }
+    var alarmToTurnOff by remember { mutableStateOf<AlarmModel?>(null) }
     val haptic = LocalHapticManager.current
     val context = LocalContext.current
     val currentStyle = LocalInterfaceStyle.current
@@ -124,7 +132,7 @@ fun AlarmScreen(
                 .statusBarsPadding()
                 .padding(horizontal = 20.dp)
         ) {
-            // Top Navigation Bar: [ Edit ]  [ + ]
+            // Top Navigation Bar: [ Logo + Edit ]  [ Test Ring | Settings | + ]
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -132,28 +140,64 @@ fun AlarmScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1C1C1E) else GlassSurface)
-                        .border(
-                            1.dp,
-                            if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassBorder,
-                            CircleShape
-                        )
-                        .clickable {
-                            haptic.buttonClick()
-                            isEditMode = !isEditMode
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // In-app HiTech Clock Logo (Displays custom gallery photo if active)
+                    val customLogoBitmap = LocalInAppLogoBitmap.current
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(Color(0xFF090B12))
+                            .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(11.dp))
+                            .clickable {
+                                haptic.buttonClick()
+                                onOpenSettings()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (customLogoBitmap != null) {
+                            Image(
+                                bitmap = customLogoBitmap.asImageBitmap(),
+                                contentDescription = "HiTech Clock Logo",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(11.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_app_logo),
+                                contentDescription = "HiTech Clock Logo",
+                                modifier = Modifier.size(34.dp)
+                            )
                         }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .testTag("alarm_edit_mode_button")
-                ) {
-                    Text(
-                        text = if (isEditMode) "Done" else "Edit",
-                        color = if (isEditMode) Color.White else TextSecondary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1C1C1E) else GlassSurface)
+                            .border(
+                                1.dp,
+                                if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassBorder,
+                                CircleShape
+                            )
+                            .clickable {
+                                haptic.buttonClick()
+                                isEditMode = !isEditMode
+                            }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .testTag("alarm_edit_mode_button")
+                    ) {
+                        Text(
+                            text = if (isEditMode) "Done" else "Edit",
+                            color = if (isEditMode) Color.White else TextSecondary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -409,7 +453,7 @@ fun AlarmScreen(
                                     modifier = Modifier.weight(1f),
                                     verticalArrangement = Arrangement.Center
                                 ) {
-                                    Row(verticalAlignment = Alignment.Bottom) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             text = alarm.getFormattedTime(is24H),
                                             color = textColor,
@@ -426,6 +470,25 @@ fun AlarmScreen(
                                                 fontWeight = FontWeight.Normal,
                                                 modifier = Modifier.padding(bottom = 5.dp)
                                             )
+                                        }
+
+                                        // FEATURE 1: Temporary skip indicator
+                                        if (alarm.isTemporarilySkipped()) {
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFFFF9800).copy(alpha = 0.16f))
+                                                    .border(1.dp, Color(0xFFFF9800).copy(alpha = 0.50f), CircleShape)
+                                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                                            ) {
+                                                Text(
+                                                    text = "Skipped tomorrow",
+                                                    color = Color(0xFFFFB74D),
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
                                         }
                                     }
 
@@ -450,13 +513,23 @@ fun AlarmScreen(
                                     )
                                 }
 
-                                // RIGHT SIDE: Compact ON/OFF switch
+                                // RIGHT SIDE: Compact ON/OFF switch with Smart Disable Sheet interception
                                 if (!isEditMode) {
                                     Switch(
                                         checked = alarm.isEnabled,
                                         onCheckedChange = { checked ->
                                             haptic.toggle(checked)
-                                            repository.toggleAlarm(alarm.id, checked)
+                                            if (!checked) {
+                                                // FEATURE 1: Turning OFF an enabled alarm opens Smart Turn Off Sheet
+                                                alarmToTurnOff = alarm
+                                            } else {
+                                                // Turning ON: if it was skipped tomorrow, restore/unskip it
+                                                if (alarm.isTemporarilySkipped()) {
+                                                    repository.unskipAlarm(alarm.id)
+                                                } else {
+                                                    repository.toggleAlarm(alarm.id, true)
+                                                }
+                                            }
                                         },
                                         colors = SwitchDefaults.colors(
                                             checkedThumbColor = Color.White,
@@ -611,6 +684,25 @@ fun AlarmScreen(
                     editingAlarm = null
                 },
                 onDismiss = { editingAlarm = null }
+            )
+        }
+
+        // FEATURE 1: Smart Alarm Turn Off Bottom Sheet
+        alarmToTurnOff?.let { alarm ->
+            SmartAlarmTurnOffBottomSheet(
+                alarm = alarm,
+                is24Hour = settings.clockFormat == "24 hour",
+                onSkipTomorrow = {
+                    repository.skipAlarmTomorrow(alarm.id)
+                    alarmToTurnOff = null
+                },
+                onTurnOffPermanently = {
+                    repository.disableAlarmPermanently(alarm.id)
+                    alarmToTurnOff = null
+                },
+                onDismiss = {
+                    alarmToTurnOff = null
+                }
             )
         }
     }

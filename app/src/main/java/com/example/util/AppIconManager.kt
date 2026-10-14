@@ -13,6 +13,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.io.FileOutputStream
 
+import androidx.compose.runtime.staticCompositionLocalOf
+
+val LocalInAppLogoBitmap = staticCompositionLocalOf<Bitmap?> { null }
+
 data class CustomAppIcon(
     val id: String,
     val name: String,
@@ -50,6 +54,15 @@ class AppIconManager(private val context: Context) {
         const val ALIAS_CUSTOM = "com.example.MainActivityAliasCustom"
         const val ALIAS_NEON = "com.example.MainActivityAliasNeon"
         const val ALIAS_MINIMAL = "com.example.MainActivityAliasMinimal"
+
+        @Volatile
+        private var instance: AppIconManager? = null
+
+        fun getInstance(context: Context): AppIconManager {
+            return instance ?: synchronized(this) {
+                instance ?: AppIconManager(context.applicationContext).also { instance = it }
+            }
+        }
     }
 
     fun getSavedIconStyle(): String {
@@ -77,6 +90,13 @@ class AppIconManager(private val context: Context) {
     fun setCustomIconFromUri(uri: Uri): Boolean {
         return try {
             val contentResolver = appContext.contentResolver
+            try {
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {}
+
             val inputStream = contentResolver.openInputStream(uri) ?: return false
             val originalBitmap = BitmapFactory.decodeStream(inputStream)
             inputStream.close()
@@ -134,10 +154,31 @@ class AppIconManager(private val context: Context) {
     }
 
     /**
-     * Resets back to default liquid glass timepiece launcher icon.
+     * Resets back to default liquid glass timepiece launcher icon without deleting custom photo.
      */
     fun resetToDefault() {
         prefs.edit().putString("selected_icon_style", ICON_DEFAULT).apply()
+        _currentIconStyle.value = ICON_DEFAULT
+        applyLauncherAlias(ALIAS_MAIN)
+    }
+
+    /**
+     * Completely removes custom gallery logo, deletes stored file and resets to default.
+     */
+    fun removeCustomLogo() {
+        try {
+            val targetFile = File(iconDir, "user_app_icon.png")
+            if (targetFile.exists()) {
+                targetFile.delete()
+            }
+        } catch (_: Exception) {}
+
+        prefs.edit()
+            .remove("custom_icon_file_path")
+            .putString("selected_icon_style", ICON_DEFAULT)
+            .apply()
+
+        _customIconBitmap.value = null
         _currentIconStyle.value = ICON_DEFAULT
         applyLauncherAlias(ALIAS_MAIN)
     }

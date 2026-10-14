@@ -22,6 +22,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.Wallpaper
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import java.io.File
+import java.io.FileOutputStream
+import java.util.UUID
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -112,6 +122,8 @@ fun CreateEditAlarmBottomSheet(
     var selectedSound by remember { mutableStateOf(initialAlarm?.soundName ?: "Gentle") }
     var vibrate by remember { mutableStateOf(initialAlarm?.vibrate ?: true) }
     var snoozeEnabled by remember { mutableStateOf(initialAlarm?.snoozeEnabled ?: true) }
+    var backgroundType by remember { mutableStateOf(initialAlarm?.backgroundType ?: "DEFAULT") }
+    var backgroundMediaUri by remember { mutableStateOf(initialAlarm?.backgroundMediaUri) }
 
     var isPreviewPlaying by remember { mutableStateOf(false) }
 
@@ -129,6 +141,60 @@ fun CreateEditAlarmBottomSheet(
                 selectedSound = imported.name
                 SoundPlayer.previewSound(context, imported.name)
                 isPreviewPlaying = true
+                haptic.confirm()
+            }
+        }
+    }
+
+    // Helper to persist alarm media files locally so they survive phone reboots and gallery changes
+    fun copyMediaToAppStorage(uri: android.net.Uri, isVideo: Boolean): String? {
+        return try {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {}
+
+            val dir = File(context.filesDir, "alarm_media").apply { if (!exists()) mkdirs() }
+            val ext = if (isVideo) "mp4" else "jpg"
+            val targetFile = File(dir, "alarm_bg_${UUID.randomUUID()}.$ext")
+
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(targetFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            targetFile.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    // FEATURE 2: Video background picker
+    val videoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            val savedPath = copyMediaToAppStorage(uri, isVideo = true)
+            if (savedPath != null) {
+                backgroundType = "VIDEO"
+                backgroundMediaUri = savedPath
+                haptic.confirm()
+            }
+        }
+    }
+
+    // FEATURE 2: Photo background picker
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            val savedPath = copyMediaToAppStorage(uri, isVideo = false)
+            if (savedPath != null) {
+                backgroundType = "PHOTO"
+                backgroundMediaUri = savedPath
                 haptic.confirm()
             }
         }
@@ -682,6 +748,270 @@ fun CreateEditAlarmBottomSheet(
                             )
                         )
                     }
+
+                    // 5. Alarm Background (FEATURE 2)
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(Color.White.copy(alpha = 0.08f))
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Alarm Background",
+                                    color = TextPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = when (backgroundType) {
+                                        "VIDEO" -> "Looping video active"
+                                        "PHOTO" -> "Photo background active"
+                                        else -> "Default ambient glass"
+                                    },
+                                    color = if (backgroundType != "DEFAULT") accentColor else TextSecondary,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // 3 Option Pills: Default Background | Choose Photo | Choose Video
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Option 1: Default Background
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(
+                                        if (backgroundType == "DEFAULT") accentColor.copy(alpha = 0.20f)
+                                        else Color.White.copy(alpha = 0.05f)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (backgroundType == "DEFAULT") accentColor else GlassBorder,
+                                        RoundedCornerShape(14.dp)
+                                    )
+                                    .clickable {
+                                        haptic.buttonClick()
+                                        backgroundType = "DEFAULT"
+                                        backgroundMediaUri = null
+                                    }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp)
+                                    .testTag("bg_option_default"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.Wallpaper,
+                                        contentDescription = null,
+                                        tint = if (backgroundType == "DEFAULT") accentColor else TextSecondary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Default",
+                                        color = if (backgroundType == "DEFAULT") Color.White else TextSecondary,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (backgroundType == "DEFAULT") FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                            }
+
+                            // Option 2: Choose Photo
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(
+                                        if (backgroundType == "PHOTO") accentColor.copy(alpha = 0.20f)
+                                        else Color.White.copy(alpha = 0.05f)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (backgroundType == "PHOTO") accentColor else GlassBorder,
+                                        RoundedCornerShape(14.dp)
+                                    )
+                                    .clickable {
+                                        haptic.buttonClick()
+                                        photoPickerLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp)
+                                    .testTag("bg_option_photo"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.Image,
+                                        contentDescription = null,
+                                        tint = if (backgroundType == "PHOTO") accentColor else TextSecondary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Choose Photo",
+                                        color = if (backgroundType == "PHOTO") Color.White else TextSecondary,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (backgroundType == "PHOTO") FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                            }
+
+                            // Option 3: Choose Video
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(
+                                        if (backgroundType == "VIDEO") accentColor.copy(alpha = 0.20f)
+                                        else Color.White.copy(alpha = 0.05f)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (backgroundType == "VIDEO") accentColor else GlassBorder,
+                                        RoundedCornerShape(14.dp)
+                                    )
+                                    .clickable {
+                                        haptic.buttonClick()
+                                        videoPickerLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                                        )
+                                    }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp)
+                                    .testTag("bg_option_video"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Default.Videocam,
+                                        contentDescription = null,
+                                        tint = if (backgroundType == "VIDEO") accentColor else TextSecondary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Choose Video",
+                                        color = if (backgroundType == "VIDEO") Color.White else TextSecondary,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (backgroundType == "VIDEO") FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                            }
+                        }
+
+                        // Preview of Selected Photo or Video
+                        if (backgroundType != "DEFAULT" && !backgroundMediaUri.isNullOrEmpty()) {
+                            val mediaFile = File(backgroundMediaUri!!)
+                            if (mediaFile.exists()) {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(110.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                                ) {
+                                    if (backgroundType == "PHOTO") {
+                                        AsyncImage(
+                                            model = mediaFile,
+                                            contentDescription = "Selected Photo Preview",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        // Video preview indicator with dark frosted backdrop
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(Color(0xFF07090F)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Videocam,
+                                                    contentDescription = null,
+                                                    tint = accentColor,
+                                                    modifier = Modifier.size(28.dp)
+                                                )
+                                                Text(
+                                                    text = "Video attached (${mediaFile.name})",
+                                                    color = Color.White,
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    // Replace and Remove action overlay buttons
+                                    Row(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        // Replace
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(CircleShape)
+                                                .background(Color.Black.copy(alpha = 0.70f))
+                                                .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
+                                                .clickable {
+                                                    haptic.buttonClick()
+                                                    if (backgroundType == "VIDEO") {
+                                                        videoPickerLauncher.launch(
+                                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                                                        )
+                                                    } else {
+                                                        photoPickerLauncher.launch(
+                                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                                        )
+                                                    }
+                                                }
+                                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                                        ) {
+                                            Text(text = "Replace", color = Color.White, fontSize = 11.sp)
+                                        }
+
+                                        // Remove
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(CircleShape)
+                                                .background(Color.Black.copy(alpha = 0.70f))
+                                                .border(1.dp, AccentRed.copy(alpha = 0.45f), CircleShape)
+                                                .clickable {
+                                                    haptic.buttonClick()
+                                                    backgroundType = "DEFAULT"
+                                                    backgroundMediaUri = null
+                                                }
+                                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                                        ) {
+                                            Text(text = "Remove", color = AccentRed, fontSize = 11.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -739,7 +1069,9 @@ fun CreateEditAlarmBottomSheet(
                             customDays = customDays,
                             soundName = selectedSound,
                             vibrate = vibrate,
-                            snoozeEnabled = snoozeEnabled
+                            snoozeEnabled = snoozeEnabled,
+                            backgroundType = backgroundType,
+                            backgroundMediaUri = backgroundMediaUri
                         ) ?: AlarmModel(
                             hour = actualHour,
                             minute = selectedMinute,
@@ -749,7 +1081,9 @@ fun CreateEditAlarmBottomSheet(
                             customDays = customDays,
                             soundName = selectedSound,
                             vibrate = vibrate,
-                            snoozeEnabled = snoozeEnabled
+                            snoozeEnabled = snoozeEnabled,
+                            backgroundType = backgroundType,
+                            backgroundMediaUri = backgroundMediaUri
                         )
 
                         onSave(finalAlarm)

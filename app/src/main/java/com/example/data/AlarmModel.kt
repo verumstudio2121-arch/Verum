@@ -18,8 +18,15 @@ data class AlarmModel(
     val customDays: Set<Int> = emptySet(), // 1 = Monday ... 7 = Sunday
     val soundName: String = "Gentle",
     val vibrate: Boolean = true,
-    val snoozeEnabled: Boolean = true
+    val snoozeEnabled: Boolean = true,
+    val skippedUntilEpochMillis: Long = 0L,
+    val backgroundType: String = "DEFAULT", // "DEFAULT", "PHOTO", "VIDEO"
+    val backgroundMediaUri: String? = null
 ) {
+    fun isTemporarilySkipped(): Boolean {
+        return isEnabled && skippedUntilEpochMillis > System.currentTimeMillis()
+    }
+
     fun getFormattedTime(is24Hour: Boolean = false): String {
         return if (is24Hour) {
             String.format("%02d:%02d", hour, minute)
@@ -57,24 +64,32 @@ data class AlarmModel(
 
     /**
      * Calculates the next epoch timestamp (in milliseconds) when this alarm should fire.
+     * Takes skippedUntilEpochMillis into account for smart temporary skip.
      */
     fun getNextTriggerEpochMillis(now: ZonedDateTime = ZonedDateTime.now()): Long {
-        val targetLocalTime = LocalTime.of(hour, minute, 0)
-        var triggerDateTime = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
+        val effectiveNow = if (isTemporarilySkipped()) {
+            val skippedInstant = java.time.Instant.ofEpochMilli(skippedUntilEpochMillis)
+            val skippedZoned = ZonedDateTime.ofInstant(skippedInstant, now.zone)
+            if (skippedZoned.isAfter(now)) skippedZoned else now
+        } else {
+            now
+        }
+
+        var triggerDateTime = effectiveNow.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
 
         when (repeatType) {
             "Once" -> {
-                if (!triggerDateTime.isAfter(now)) {
+                if (!triggerDateTime.isAfter(effectiveNow)) {
                     triggerDateTime = triggerDateTime.plusDays(1)
                 }
             }
             "Every day" -> {
-                if (!triggerDateTime.isAfter(now)) {
+                if (!triggerDateTime.isAfter(effectiveNow)) {
                     triggerDateTime = triggerDateTime.plusDays(1)
                 }
             }
             "Weekdays", "Monday-Friday" -> {
-                while (!triggerDateTime.isAfter(now) ||
+                while (!triggerDateTime.isAfter(effectiveNow) ||
                     triggerDateTime.dayOfWeek == DayOfWeek.SATURDAY ||
                     triggerDateTime.dayOfWeek == DayOfWeek.SUNDAY
                 ) {
@@ -82,7 +97,7 @@ data class AlarmModel(
                 }
             }
             "Weekends", "Saturday-Sunday" -> {
-                while (!triggerDateTime.isAfter(now) ||
+                while (!triggerDateTime.isAfter(effectiveNow) ||
                     (triggerDateTime.dayOfWeek != DayOfWeek.SATURDAY &&
                      triggerDateTime.dayOfWeek != DayOfWeek.SUNDAY)
                 ) {
@@ -91,14 +106,14 @@ data class AlarmModel(
             }
             "Custom" -> {
                 if (customDays.isEmpty()) {
-                    if (!triggerDateTime.isAfter(now)) {
+                    if (!triggerDateTime.isAfter(effectiveNow)) {
                         triggerDateTime = triggerDateTime.plusDays(1)
                     }
                 } else {
                     var count = 0
                     while (count < 14) { // safety limit
                         val currentDayInt = triggerDateTime.dayOfWeek.value // 1 (Mon) to 7 (Sun)
-                        if (triggerDateTime.isAfter(now) && customDays.contains(currentDayInt)) {
+                        if (triggerDateTime.isAfter(effectiveNow) && customDays.contains(currentDayInt)) {
                             break
                         }
                         triggerDateTime = triggerDateTime.plusDays(1)
@@ -125,6 +140,11 @@ data class AlarmModel(
         json.put("soundName", soundName)
         json.put("vibrate", vibrate)
         json.put("snoozeEnabled", snoozeEnabled)
+        json.put("skippedUntilEpochMillis", skippedUntilEpochMillis)
+        json.put("backgroundType", backgroundType)
+        if (backgroundMediaUri != null) {
+            json.put("backgroundMediaUri", backgroundMediaUri)
+        }
         return json
     }
 
@@ -147,7 +167,10 @@ data class AlarmModel(
                 customDays = customDays,
                 soundName = json.optString("soundName", "Gentle"),
                 vibrate = json.optBoolean("vibrate", true),
-                snoozeEnabled = json.optBoolean("snoozeEnabled", true)
+                snoozeEnabled = json.optBoolean("snoozeEnabled", true),
+                skippedUntilEpochMillis = json.optLong("skippedUntilEpochMillis", 0L),
+                backgroundType = json.optString("backgroundType", "DEFAULT"),
+                backgroundMediaUri = json.optString("backgroundMediaUri", "").takeIf { it.isNotEmpty() }
             )
         }
     }

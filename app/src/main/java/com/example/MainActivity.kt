@@ -103,8 +103,13 @@ class MainActivity : ComponentActivity() {
                 interfaceStyle = currentInterfaceStyle
             ) {
                 val hapticManager = rememberHapticManager()
+                val iconManager = remember { com.example.util.AppIconManager.getInstance(applicationContext) }
+                val customLogoBitmap by iconManager.customIconBitmap.collectAsState()
 
-                CompositionLocalProvider(LocalHapticManager provides hapticManager) {
+                CompositionLocalProvider(
+                    LocalHapticManager provides hapticManager,
+                    com.example.util.LocalInAppLogoBitmap provides customLogoBitmap
+                ) {
                     val tabs = remember { ClockNavTab.values() }
                     val pagerState = rememberPagerState(
                         initialPage = tabs.indexOf(ClockNavTab.WORLD),

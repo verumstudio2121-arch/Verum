@@ -80,6 +80,7 @@ import com.example.audio.SoundPlayer
 import com.example.data.PreferencesManager
 import com.example.util.AppIconManager
 import com.example.ui.theme.AccentColorTheme
+import com.example.ui.theme.AccentRed
 import com.example.ui.theme.AccentTheme
 import com.example.ui.theme.DeepBlack
 import com.example.ui.theme.GlassBorder
@@ -109,7 +110,7 @@ fun SettingsScreen(
         InterfaceStyle.fromId(settings.interfaceStyle)
     }
     val context = LocalContext.current
-    val iconManager = remember { AppIconManager(context) }
+    val iconManager = remember { AppIconManager.getInstance(context) }
     val currentIconStyle by iconManager.currentIconStyle.collectAsState()
     val customIconBitmap by iconManager.customIconBitmap.collectAsState()
 
@@ -1037,39 +1038,156 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             // APP ICON CUSTOMIZATION SECTION
-            SettingsSectionTitle("APP ICON")
+            // APP APPEARANCE (FEATURE 3: CUSTOM IN-APP LOGO & LAUNCHER ICON)
+            SettingsSectionTitle("APP APPEARANCE")
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 cornerRadius = 24.dp,
                 backgroundColor = GlassSurface
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    // Header
+                    Text(
+                        text = "HiTech Clock Logo",
+                        color = TextPrimary,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Customize the in-app logo using any photo from your gallery",
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // Live Active Logo Preview (Circular / Rounded-Square)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Color.White.copy(alpha = 0.04f))
+                            .border(1.dp, GlassBorder, RoundedCornerShape(18.dp))
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(76.dp)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(Color(0xFF090B12))
+                                    .border(2.dp, accentColor, RoundedCornerShape(20.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (customIconBitmap != null) {
+                                    Image(
+                                        bitmap = customIconBitmap!!.asImageBitmap(),
+                                        contentDescription = "Active Custom In-App Logo",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(20.dp)),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                } else {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.ic_app_logo),
+                                        contentDescription = "Default HiTech Clock Logo",
+                                        modifier = Modifier.size(68.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
                             Text(
-                                text = "Home Screen & App Icon",
+                                text = if (customIconBitmap != null) "Active Custom Photo Logo" else "Default HiTech Clock Logo",
                                 color = TextPrimary,
-                                fontSize = 16.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Choose a theme or pick a custom photo from your gallery",
-                                color = TextSecondary,
-                                fontSize = 13.sp
+                                text = if (customIconBitmap != null) "Displayed everywhere inside the app" else "Standard Liquid Glass emblem",
+                                color = TextTertiary,
+                                fontSize = 11.sp
                             )
                         }
+                    }
 
-                        // Gallery Photo Picker Button
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 3 Customization Options Requested in Specs:
+                    // 1. Default HiTech Clock Logo
+                    // 2. Choose from Gallery
+                    // 3. Remove Custom Logo
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Option 1: Default HiTech Clock Logo
                         Box(
                             modifier = Modifier
-                                .clip(CircleShape)
-                                .background(accentColor.copy(alpha = 0.2f))
-                                .border(1.dp, accentColor.copy(alpha = 0.55f), CircleShape)
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (customIconBitmap == null) accentColor.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.04f))
+                                .border(1.dp, if (customIconBitmap == null) accentColor else GlassBorder, RoundedCornerShape(16.dp))
+                                .clickable {
+                                    haptic.buttonClick()
+                                    iconManager.resetToDefault()
+                                }
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .testTag("option_default_hitech_logo")
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.ic_app_logo),
+                                        contentDescription = "Default Logo",
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "Default HiTech Clock Logo",
+                                            color = TextPrimary,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Text(
+                                            text = "Classic Liquid Glass timepiece",
+                                            color = TextSecondary,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                                if (customIconBitmap == null) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        tint = accentColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Option 2: Choose from Gallery
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (customIconBitmap != null) accentColor.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.04f))
+                                .border(1.dp, if (customIconBitmap != null) accentColor else GlassBorder, RoundedCornerShape(16.dp))
                                 .clickable {
                                     haptic.buttonClick()
                                     galleryIconPickerLauncher.launch(
@@ -1078,30 +1196,135 @@ fun SettingsScreen(
                                         )
                                     )
                                 }
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                                .testTag("choose_gallery_icon_button")
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .testTag("option_choose_from_gallery")
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Image,
-                                    contentDescription = "Pick from gallery",
-                                    tint = accentColor,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Gallery",
-                                    color = accentColor,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(accentColor.copy(alpha = 0.22f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Image,
+                                            contentDescription = "Gallery",
+                                            tint = accentColor,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "Choose from Gallery",
+                                            color = TextPrimary,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Text(
+                                            text = if (customIconBitmap != null) "Photo active • Tap to choose another" else "Select any photo to crop and use as logo",
+                                            color = TextSecondary,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                                if (customIconBitmap != null) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        tint = accentColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Option 3: Remove Custom Logo
+                        if (customIconBitmap != null) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color.White.copy(alpha = 0.04f))
+                                    .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+                                    .clickable {
+                                        haptic.buttonClick()
+                                        iconManager.removeCustomLogo()
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                                    .testTag("option_remove_custom_logo")
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(Color.Red.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Remove logo",
+                                            tint = AccentRed,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "Remove Custom Logo",
+                                            color = AccentRed,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Text(
+                                            text = "Restore default HiTech Clock branding",
+                                            color = TextTertiary,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(18.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                    // Icon Style Selector Grid
+                    // Distinction note & launcher presets
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(Color.White.copy(alpha = 0.08f))
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Home Screen Launcher Icon",
+                        color = TextPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Android adaptive icon presets for your home screen launcher",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Launcher Icon Style Selector Grid
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1109,7 +1332,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Option 1: Default Liquid Glass Clock
+                        // Preset 1: Liquid Glass (Default)
                         AppIconStyleOption(
                             title = "Liquid Glass",
                             subtitle = "Default",
@@ -1129,10 +1352,10 @@ fun SettingsScreen(
                             )
                         }
 
-                        // Option 2: Clock (Classic Dark Watchface)
+                        // Preset 2: Clock (Classic Dark Watchface)
                         AppIconStyleOption(
-                            title = "Clock",
-                            subtitle = "Classic Dark",
+                            title = "Classic Clock",
+                            subtitle = "Watchface",
                             isSelected = currentIconStyle == AppIconManager.ICON_CLOCK,
                             accentColor = accentColor,
                             onClick = {
@@ -1149,23 +1372,15 @@ fun SettingsScreen(
                             )
                         }
 
-                        // Option 3: Gallery Custom Photo (shows selected photo thumbnail if available)
+                        // Preset 3: Custom Artwork Launcher Alias
                         AppIconStyleOption(
-                            title = "Gallery",
-                            subtitle = if (customIconBitmap != null) "Active" else "Upload photo",
+                            title = "Custom Artwork",
+                            subtitle = if (customIconBitmap != null) "Gallery active" else "Emblem",
                             isSelected = currentIconStyle == AppIconManager.ICON_CUSTOM,
                             accentColor = accentColor,
                             onClick = {
                                 haptic.buttonClick()
-                                if (customIconBitmap != null) {
-                                    iconManager.setPresetIconStyle(AppIconManager.ICON_CUSTOM)
-                                } else {
-                                    galleryIconPickerLauncher.launch(
-                                        androidx.activity.result.PickVisualMediaRequest(
-                                            ActivityResultContracts.PickVisualMedia.ImageOnly
-                                        )
-                                    )
-                                }
+                                iconManager.setPresetIconStyle(AppIconManager.ICON_CUSTOM)
                             }
                         ) {
                             if (customIconBitmap != null) {
@@ -1174,28 +1389,21 @@ fun SettingsScreen(
                                     contentDescription = "Custom Gallery Icon",
                                     modifier = Modifier
                                         .size(54.dp)
-                                        .clip(RoundedCornerShape(14.dp))
+                                        .clip(RoundedCornerShape(14.dp)),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                 )
                             } else {
-                                Box(
+                                Image(
+                                    painter = painterResource(id = R.drawable.ic_launcher_custom_foreground),
+                                    contentDescription = "Custom Artwork Emblem",
                                     modifier = Modifier
                                         .size(54.dp)
                                         .clip(RoundedCornerShape(14.dp))
-                                        .background(Color.White.copy(alpha = 0.08f))
-                                        .border(1.dp, GlassBorder, RoundedCornerShape(14.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = "Pick image",
-                                        tint = accentColor,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
+                                )
                             }
                         }
 
-                        // Option 3: Cyber Neon
+                        // Preset 4: Cyber Neon
                         AppIconStyleOption(
                             title = "Cyber Neon",
                             subtitle = "Purple/Cyan",
@@ -1222,10 +1430,10 @@ fun SettingsScreen(
                             }
                         }
 
-                        // Option 4: Minimal
+                        // Preset 5: Minimal
                         AppIconStyleOption(
                             title = "Minimalist",
-                            subtitle = "Clean White",
+                            subtitle = "Clean Slate",
                             isSelected = currentIconStyle == AppIconManager.ICON_MINIMAL,
                             accentColor = accentColor,
                             onClick = {
@@ -1246,40 +1454,6 @@ fun SettingsScreen(
                                     contentDescription = "Minimalist",
                                     modifier = Modifier.size(50.dp)
                                 )
-                            }
-                        }
-                    }
-
-                    // Reset / Clear button if a custom gallery icon is set
-                    if (customIconBitmap != null) {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .clickable {
-                                        haptic.buttonClick()
-                                        iconManager.resetToDefault()
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Refresh,
-                                        contentDescription = null,
-                                        tint = TextTertiary,
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Reset to Default Icon",
-                                        color = TextTertiary,
-                                        fontSize = 12.sp
-                                    )
-                                }
                             }
                         }
                     }

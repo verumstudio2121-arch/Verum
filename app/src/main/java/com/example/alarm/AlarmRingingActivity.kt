@@ -71,6 +71,10 @@ import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.util.LocalHapticManager
 import com.example.util.rememberHapticManager
+import com.example.ui.background.LoopingVideoBackground
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import java.io.File
 import kotlinx.coroutines.delay
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -96,6 +100,11 @@ class AlarmRingingActivity : ComponentActivity() {
         val vibrate = intent.getBooleanExtra(EXTRA_ALARM_VIBRATE, true)
         val snoozeEnabled = intent.getBooleanExtra(EXTRA_ALARM_SNOOZE_ENABLED, true)
 
+        val repo = AlarmRepository(this)
+        val alarm = repo.getAlarm(alarmId) ?: repo.alarms.value.firstOrNull { it.backgroundType != "DEFAULT" }
+        val backgroundType = intent.getStringExtra("alarm_bg_type") ?: alarm?.backgroundType ?: "DEFAULT"
+        val backgroundMediaUri = intent.getStringExtra("alarm_bg_uri") ?: alarm?.backgroundMediaUri
+
         val prefs = PreferencesManager(this)
         val initialSnoozeMinutes = prefs.settings.value.snoozeDurationMinutes.coerceAtLeast(5)
 
@@ -107,6 +116,8 @@ class AlarmRingingActivity : ComponentActivity() {
                         label = label,
                         snoozeEnabled = snoozeEnabled,
                         initialSnoozeMinutes = initialSnoozeMinutes,
+                        backgroundType = backgroundType,
+                        backgroundMediaUri = backgroundMediaUri,
                         onSnooze = { minutes ->
                             AlarmService.stopAlarm(this)
                             AlarmScheduler(this).scheduleSnooze(alarmId, label, sound, vibrate, minutes)
@@ -114,13 +125,12 @@ class AlarmRingingActivity : ComponentActivity() {
                         },
                         onDismiss = {
                             AlarmService.stopAlarm(this)
-                            val repo = AlarmRepository(this)
-                            val alarm = repo.getAlarm(alarmId)
-                            if (alarm != null) {
-                                if (alarm.repeatType == "Once") {
+                            val currentAlarm = repo.getAlarm(alarmId)
+                            if (currentAlarm != null) {
+                                if (currentAlarm.repeatType == "Once") {
                                     repo.toggleAlarm(alarmId, false)
                                 } else {
-                                    repo.updateAlarm(alarm)
+                                    repo.updateAlarm(currentAlarm)
                                 }
                             }
                             finish()
@@ -160,6 +170,8 @@ fun AlarmRingingScreen(
     label: String,
     snoozeEnabled: Boolean,
     initialSnoozeMinutes: Int = 5,
+    backgroundType: String = "DEFAULT",
+    backgroundMediaUri: String? = null,
     onSnooze: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -195,21 +207,59 @@ fun AlarmRingingScreen(
             .background(DeepBlack),
         contentAlignment = Alignment.Center
     ) {
-        // Ambient glass radial glow
-        Box(
-            modifier = Modifier
-                .size(360.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        listOf(
-                            Color(0xFF38BDF8).copy(alpha = ambientPulse),
-                            Color(0xFFA78BFA).copy(alpha = ambientPulse * 0.5f),
-                            Color.Transparent
+        // FEATURE 2: VIDEO / PHOTO BACKGROUND
+        val mediaFile = remember(backgroundMediaUri) {
+            backgroundMediaUri?.let { File(it) }
+        }
+        val hasValidMedia = remember(backgroundMediaUri) {
+            if (backgroundMediaUri.isNullOrEmpty()) false
+            else if (backgroundMediaUri.startsWith("content://")) true
+            else File(backgroundMediaUri).exists()
+        }
+
+        if (backgroundType == "VIDEO" && hasValidMedia) {
+            // Looping, muted video covering entire screen with Center-Crop
+            LoopingVideoBackground(
+                videoPathOrUri = backgroundMediaUri!!,
+                modifier = Modifier.fillMaxSize()
+            )
+            // Subtle dark overlay behind text for readability
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.52f))
+            )
+        } else if (backgroundType == "PHOTO" && hasValidMedia) {
+            // Custom photo background
+            AsyncImage(
+                model = if (backgroundMediaUri!!.startsWith("content://")) android.net.Uri.parse(backgroundMediaUri) else mediaFile,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            // Subtle dark overlay behind text for readability
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.52f))
+            )
+        } else {
+            // Default ambient glass radial glow
+            Box(
+                modifier = Modifier
+                    .size(360.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(
+                                Color(0xFF38BDF8).copy(alpha = ambientPulse),
+                                Color(0xFFA78BFA).copy(alpha = ambientPulse * 0.5f),
+                                Color.Transparent
+                            )
                         )
                     )
-                )
-        )
+            )
+        }
 
         Column(
             modifier = Modifier
