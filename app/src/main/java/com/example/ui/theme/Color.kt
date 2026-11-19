@@ -8,16 +8,50 @@ val DeepBlack = Color(0xFF000000)
 val ObsidianBlack = Color(0xFF08080C)
 val CharcoalGlass = Color(0xFF121218)
 
-// Liquid Glass surfaces
-val GlassSurface = Color(0x17FFFFFF)
-val GlassSurfaceElevated = Color(0x22FFFFFF)
-val GlassSurfaceSubtle = Color(0x0EFFFFFF)
-val GlassSelectedCapsule = Color(0x2EFFFFFF)
+// Light mode base palette
+val LightCanvas = Color(0xFFF2F5FA)
+val LightSurface = Color(0xFFFFFFFF)
+val LightInk = Color(0xFF0F172A)
 
-// Borders & Reflections
-val GlassBorder = Color(0x24FFFFFF)
-val GlassBorderBright = Color(0x4DFFFFFF)
-val GlassHighlight = Color(0x2BFFFFFF)
+// Non-composable dark defaults (used by Modifier extensions & ColorScheme builders)
+val DarkGlassSurface = Color(0x17FFFFFF)
+val DarkGlassSurfaceElevated = Color(0x22FFFFFF)
+val DarkGlassBorder = Color(0x24FFFFFF)
+val DarkGlassBorderBright = Color(0x4DFFFFFF)
+val DarkTextPrimary = Color(0xFFFFFFFF)
+val DarkTextSecondary = Color(0xB8FFFFFF)
+
+val LocalIsDarkTheme = staticCompositionLocalOf { true }
+
+// Theme-adaptive Liquid Glass surfaces
+val GlassSurface: Color
+    @Composable
+    get() = if (LocalIsDarkTheme.current) Color(0x17FFFFFF) else Color(0xD9FFFFFF)
+
+val GlassSurfaceElevated: Color
+    @Composable
+    get() = if (LocalIsDarkTheme.current) Color(0x22FFFFFF) else Color(0xF5FFFFFF)
+
+val GlassSurfaceSubtle: Color
+    @Composable
+    get() = if (LocalIsDarkTheme.current) Color(0x0EFFFFFF) else Color(0x99FFFFFF)
+
+val GlassSelectedCapsule: Color
+    @Composable
+    get() = if (LocalIsDarkTheme.current) Color(0x2EFFFFFF) else Color(0x180F172A)
+
+// Theme-adaptive Borders & Reflections
+val GlassBorder: Color
+    @Composable
+    get() = if (LocalIsDarkTheme.current) Color(0x24FFFFFF) else Color(0x1A0F172A)
+
+val GlassBorderBright: Color
+    @Composable
+    get() = if (LocalIsDarkTheme.current) Color(0x4DFFFFFF) else Color(0x2E0F172A)
+
+val GlassHighlight: Color
+    @Composable
+    get() = if (LocalIsDarkTheme.current) Color(0x2BFFFFFF) else Color(0xE6FFFFFF)
 
 // Accents
 val AccentCyan = Color(0xFF38BDF8)
@@ -181,9 +215,20 @@ enum class InterfaceStyle(
 
 val LocalInterfaceStyle = staticCompositionLocalOf<InterfaceStyle> { InterfaceStyle.MIX_LIQUID }
 
-// Typography
-val TextPrimary = Color(0xFFFFFFFF)
-val TextSecondary = Color(0xB8FFFFFF)
-val TextTertiary = Color(0x70FFFFFF)
-val TextDisabled = Color(0x38FFFFFF)
+// Theme-adaptive Typography colors
+val TextPrimary: Color
+    @Composable
+    get() = if (LocalIsDarkTheme.current) Color(0xFFFFFFFF) else Color(0xFF0F172A)
+
+val TextSecondary: Color
+    @Composable
+    get() = if (LocalIsDarkTheme.current) Color(0xB8FFFFFF) else Color(0xB30F172A)
+
+val TextTertiary: Color
+    @Composable
+    get() = if (LocalIsDarkTheme.current) Color(0x70FFFFFF) else Color(0x7A0F172A)
+
+val TextDisabled: Color
+    @Composable
+    get() = if (LocalIsDarkTheme.current) Color(0x38FFFFFF) else Color(0x4A0F172A)
 

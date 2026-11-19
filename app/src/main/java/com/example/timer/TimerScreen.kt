@@ -60,6 +60,7 @@ import com.example.ui.theme.GlassBorderBright
 import com.example.ui.theme.GlassSurface
 import com.example.ui.theme.GlassSurfaceElevated
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -72,6 +73,7 @@ fun TimerScreen(
 ) {
     val currentAccent = LocalAccentColor.current
     val accentColor = currentAccent.primary
+    val isDark = LocalIsDarkTheme.current
     val state by viewModel.state.collectAsState()
     val remainingMillis by viewModel.remainingMillis.collectAsState()
     val totalMillis by viewModel.totalMillis.collectAsState()
@@ -141,7 +143,7 @@ fun TimerScreen(
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Add Preset",
-                            tint = Color.White.copy(alpha = 0.85f),
+                            tint = TextPrimary.copy(alpha = 0.85f),
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -157,7 +159,7 @@ fun TimerScreen(
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = "More Options",
-                                tint = Color.White.copy(alpha = 0.85f),
+                                tint = TextPrimary.copy(alpha = 0.85f),
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -165,7 +167,7 @@ fun TimerScreen(
                         DropdownMenu(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false },
-                            modifier = Modifier.background(GlassSurfaceElevated)
+                            modifier = Modifier.background(if (isDark) Color(0xFF1C1F2B) else Color.White)
                         ) {
                             DropdownMenuItem(
                                 text = { Text("Settings", color = TextPrimary) },
@@ -301,7 +303,7 @@ fun TimerScreen(
 
                             // Background Track
                             drawCircle(
-                                color = Color.White.copy(alpha = 0.08f),
+                                color = if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFF0F172A).copy(alpha = 0.10f),
                                 style = Stroke(width = strokeWidth)
                             )
 
@@ -364,7 +366,7 @@ fun TimerScreen(
                         modifier = Modifier
                             .size(76.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.12f))
+                            .background(GlassSurfaceElevated)
                             .border(1.dp, GlassBorderBright, CircleShape)
                             .clickable {
                                 haptic.buttonClick()
@@ -374,7 +376,7 @@ fun TimerScreen(
                     ) {
                         Text(
                             text = "Cancel",
-                            color = Color.White,
+                            color = TextPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -432,7 +434,7 @@ fun TimerScreen(
         var newPresetMins by remember { mutableStateOf("20") }
         AlertDialog(
             onDismissRequest = { showAddPresetDialog = false },
-            containerColor = GlassSurfaceElevated,
+            containerColor = if (isDark) Color(0xFF1C1F2B) else Color.White,
             title = { Text("Add Quick Timer Preset", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 Column {

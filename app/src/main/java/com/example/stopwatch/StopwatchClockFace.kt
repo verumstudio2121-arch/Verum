@@ -50,6 +50,7 @@ import com.example.ui.theme.GlassBorder
 import com.example.ui.theme.GlassBorderBright
 import com.example.ui.theme.GlassSurface
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -144,6 +145,7 @@ private fun ChronographAnalogDial(
     size: Dp = 250.dp
 ) {
     val density = LocalDensity.current
+    val isDark = LocalIsDarkTheme.current
 
     // Angles
     val secondsTotal = elapsedMillis / 1000f
@@ -152,19 +154,39 @@ private fun ChronographAnalogDial(
     val minutesTotal = elapsedMillis / 60000f
     val minuteSubAngle = (minutesTotal % 30f) / 30f * 360f
 
+    val dialBgBrush = if (isDark) {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF1E212B).copy(alpha = 0.85f),
+                Color(0xFF101217).copy(alpha = 0.95f),
+                Color(0xFF090A0E)
+            )
+        )
+    } else {
+        Brush.radialGradient(
+            colors = listOf(
+                Color.White,
+                Color(0xFFF3F6FB),
+                Color(0xFFE6ECF5)
+            )
+        )
+    }
+
+    val majorTickColor = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF334155).copy(alpha = 0.72f)
+    val secondTickColor = if (isDark) Color.White.copy(alpha = 0.3f) else Color(0xFF475569).copy(alpha = 0.42f)
+    val minorTickColor = if (isDark) Color.White.copy(alpha = 0.12f) else Color(0xFF64748B).copy(alpha = 0.22f)
+    val rimColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color(0xFF0F172A).copy(alpha = 0.06f)
+    val subFillColor = if (isDark) Color.White.copy(alpha = 0.04f) else Color(0xFF0F172A).copy(alpha = 0.04f)
+    val subStrokeColor = if (isDark) Color.White.copy(alpha = 0.18f) else Color(0xFF64748B).copy(alpha = 0.30f)
+    val subTickMajor = if (isDark) Color.White.copy(alpha = 0.5f) else Color(0xFF334155).copy(alpha = 0.60f)
+    val subTickMinor = if (isDark) Color.White.copy(alpha = 0.2f) else Color(0xFF64748B).copy(alpha = 0.30f)
+    val subNeedleColor = if (isDark) Color.White else Color(0xFF0F172A)
+
     Box(
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFF1E212B).copy(alpha = 0.85f),
-                        Color(0xFF101217).copy(alpha = 0.95f),
-                        Color(0xFF090A0E)
-                    )
-                )
-            )
+            .background(dialBgBrush)
             .border(1.5.dp, GlassBorderBright, CircleShape),
         contentAlignment = Alignment.Center
     ) {
@@ -174,7 +196,7 @@ private fun ChronographAnalogDial(
 
             // Outer dial rim specular highlight
             drawCircle(
-                color = Color.White.copy(alpha = 0.05f),
+                color = rimColor,
                 radius = radius - 2f,
                 style = Stroke(width = 2f)
             )
@@ -183,7 +205,11 @@ private fun ChronographAnalogDial(
             val outerPaint = android.graphics.Paint().apply {
                 isAntiAlias = true
                 textSize = density.run { 11.5.sp.toPx() }
-                color = android.graphics.Color.argb(210, 210, 215, 225)
+                color = if (isDark) {
+                    android.graphics.Color.argb(210, 210, 215, 225)
+                } else {
+                    android.graphics.Color.argb(220, 30, 41, 59)
+                }
                 textAlign = android.graphics.Paint.Align.CENTER
                 typeface = android.graphics.Typeface.create(
                     android.graphics.Typeface.DEFAULT,
@@ -214,9 +240,9 @@ private fun ChronographAnalogDial(
                 }
                 val tickWidth = if (isMajorTick) 1.8.dp.toPx() else 1.dp.toPx()
                 val tickColor = when {
-                    isMajorTick -> Color.White.copy(alpha = 0.6f)
-                    isSecondTick -> Color.White.copy(alpha = 0.3f)
-                    else -> Color.White.copy(alpha = 0.12f)
+                    isMajorTick -> majorTickColor
+                    isSecondTick -> secondTickColor
+                    else -> minorTickColor
                 }
 
                 val angleDeg = (i * 3.0) - 90.0
@@ -239,11 +265,15 @@ private fun ChronographAnalogDial(
                 )
             }
 
-            // Digital Time Readout inside top half of dial (Matching reference video 00:20)
+            // Digital Time Readout inside top half of dial
             val digitalPaint = android.graphics.Paint().apply {
                 isAntiAlias = true
                 textSize = density.run { 22.sp.toPx() }
-                color = android.graphics.Color.WHITE
+                color = if (isDark) {
+                    android.graphics.Color.WHITE
+                } else {
+                    android.graphics.Color.rgb(15, 23, 42)
+                }
                 textAlign = android.graphics.Paint.Align.CENTER
                 typeface = android.graphics.Typeface.create(
                     android.graphics.Typeface.MONOSPACE,
@@ -259,12 +289,12 @@ private fun ChronographAnalogDial(
 
             // Sub-dial background circle
             drawCircle(
-                color = Color.White.copy(alpha = 0.04f),
+                color = subFillColor,
                 radius = subRadius,
                 center = subCenter
             )
             drawCircle(
-                color = Color.White.copy(alpha = 0.18f),
+                color = subStrokeColor,
                 radius = subRadius,
                 center = subCenter,
                 style = Stroke(width = 1f)
@@ -274,7 +304,11 @@ private fun ChronographAnalogDial(
             val subPaint = android.graphics.Paint().apply {
                 isAntiAlias = true
                 textSize = density.run { 8.sp.toPx() }
-                color = android.graphics.Color.argb(190, 190, 195, 205)
+                color = if (isDark) {
+                    android.graphics.Color.argb(190, 190, 195, 205)
+                } else {
+                    android.graphics.Color.argb(200, 51, 65, 85)
+                }
                 textAlign = android.graphics.Paint.Align.CENTER
             }
 
@@ -303,7 +337,7 @@ private fun ChronographAnalogDial(
                 val ey = subCenter.y + (endR * sin(angleRad)).toFloat()
 
                 drawLine(
-                    color = Color.White.copy(alpha = if (isFive) 0.5f else 0.2f),
+                    color = if (isFive) subTickMajor else subTickMinor,
                     start = Offset(sx, sy),
                     end = Offset(ex, ey),
                     strokeWidth = 1f
@@ -313,20 +347,20 @@ private fun ChronographAnalogDial(
             // Sub-dial Minute Needle
             rotate(degrees = minuteSubAngle, pivot = subCenter) {
                 drawLine(
-                    color = Color.White.copy(alpha = 0.95f),
+                    color = subNeedleColor.copy(alpha = 0.95f),
                     start = Offset(subCenter.x, subCenter.y + (subRadius * 0.15f)),
                     end = Offset(subCenter.x, subCenter.y - (subRadius * 0.65f)),
                     strokeWidth = 1.6.dp.toPx(),
                     cap = StrokeCap.Round
                 )
                 drawCircle(
-                    color = Color.White,
+                    color = subNeedleColor,
                     radius = 2.dp.toPx(),
                     center = subCenter
                 )
             }
 
-            // Main Sweeping Blue Stopwatch Hand
+            // Main Sweeping Accent Stopwatch Hand
             rotate(degrees = secondAngle, pivot = center) {
                 val handLength = radius * 0.90f
                 val tailLength = radius * 0.22f
@@ -348,7 +382,7 @@ private fun ChronographAnalogDial(
                 )
             }
 
-            // Central White Pin Cap
+            // Central Pin Cap
             drawCircle(
                 color = Color.White,
                 radius = 2.dp.toPx(),
@@ -366,20 +400,31 @@ private fun MinimalDigitalStopwatch(
     formattedTime: String,
     accentColor: Color
 ) {
+    val isDark = LocalIsDarkTheme.current
+    val cardBgBrush = if (isDark) {
+        Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF1E212B).copy(alpha = 0.75f),
+                Color(0xFF101217).copy(alpha = 0.95f),
+                Color(0xFF090A0E)
+            )
+        )
+    } else {
+        Brush.radialGradient(
+            colors = listOf(
+                Color.White,
+                Color(0xFFF3F6FB),
+                Color(0xFFE8EEF7)
+            )
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(230.dp)
             .clip(RoundedCornerShape(32.dp))
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFF1E212B).copy(alpha = 0.75f),
-                        Color(0xFF101217).copy(alpha = 0.95f),
-                        Color(0xFF090A0E)
-                    )
-                )
-            )
+            .background(cardBgBrush)
             .border(1.5.dp, GlassBorderBright, RoundedCornerShape(32.dp)),
         contentAlignment = Alignment.Center
     ) {

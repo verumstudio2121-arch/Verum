@@ -90,8 +90,8 @@ import kotlin.math.roundToInt
  */
 fun Modifier.liquidGlass(
     shape: Shape = RoundedCornerShape(24.dp),
-    backgroundColor: Color = GlassSurface,
-    borderColor: Color = GlassBorder,
+    backgroundColor: Color = DarkGlassSurface,
+    borderColor: Color = DarkGlassBorder,
     borderWidth: Dp = 1.dp,
     blurRadius: Dp = 16.dp,
     specularHighlight: Boolean = true,
@@ -131,7 +131,7 @@ fun Modifier.liquidGlass(
  */
 fun Modifier.liquidGlass(
     shape: Shape = RoundedCornerShape(24.dp),
-    backgroundColor: Color = GlassSurface,
+    backgroundColor: Color = DarkGlassSurface,
     borderBrush: Brush,
     borderWidth: Dp = 1.dp,
     blurRadius: Dp = 16.dp,
@@ -173,8 +173,8 @@ fun Modifier.liquidGlass(
  */
 fun Modifier.liquidGlassElevated(
     shape: Shape = RoundedCornerShape(28.dp),
-    backgroundColor: Color = GlassSurfaceElevated,
-    borderColor: Color = GlassBorderBright,
+    backgroundColor: Color = DarkGlassSurfaceElevated,
+    borderColor: Color = DarkGlassBorderBright,
     borderWidth: Dp = 1.dp,
     blurRadius: Dp = 20.dp,
     specularHighlight: Boolean = true
@@ -193,8 +193,8 @@ fun Modifier.liquidGlassElevated(
  */
 fun Modifier.glassmorphism(
     shape: Shape = RoundedCornerShape(24.dp),
-    backgroundColor: Color = GlassSurface,
-    borderColor: Color = GlassBorder,
+    backgroundColor: Color = DarkGlassSurface,
+    borderColor: Color = DarkGlassBorder,
     borderWidth: Dp = 1.dp,
     blurRadius: Dp = 16.dp,
     specularHighlight: Boolean = true
@@ -295,13 +295,24 @@ fun GlassCard(
 
     val currentStyle = LocalInterfaceStyle.current
     val currentAccent = LocalAccentColor.current
+    val isDark = LocalIsDarkTheme.current
+    val defaultSurface = GlassSurface
+    val defaultBorder = GlassBorder
 
-    val effectiveBg = remember(backgroundColor, currentStyle) {
-        if (backgroundColor == GlassSurface) {
-            when (currentStyle) {
-                InterfaceStyle.PURE_LIQUID_GLASS -> Color(0x22FFFFFF)
-                InterfaceStyle.MINIMAL -> Color(0xFF1C1C1E)
-                InterfaceStyle.MIX_LIQUID -> GlassSurface
+    val effectiveBg = remember(backgroundColor, currentStyle, isDark, defaultSurface) {
+        if (backgroundColor == defaultSurface) {
+            if (isDark) {
+                when (currentStyle) {
+                    InterfaceStyle.PURE_LIQUID_GLASS -> Color(0x22FFFFFF)
+                    InterfaceStyle.MINIMAL -> Color(0xFF1C1C1E)
+                    InterfaceStyle.MIX_LIQUID -> defaultSurface
+                }
+            } else {
+                when (currentStyle) {
+                    InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xCCFFFFFF)
+                    InterfaceStyle.MINIMAL -> Color.White
+                    InterfaceStyle.MIX_LIQUID -> Color(0xE8FFFFFF)
+                }
             }
         } else backgroundColor
     }
@@ -312,40 +323,66 @@ fun GlassCard(
     }
 
     val effectiveSpecularAlpha = when (currentStyle) {
-        InterfaceStyle.PURE_LIQUID_GLASS -> (specularAlpha * 2.0f).coerceAtMost(0.32f)
+        InterfaceStyle.PURE_LIQUID_GLASS -> if (isDark) (specularAlpha * 2.0f).coerceAtMost(0.32f) else 0.45f
         InterfaceStyle.MINIMAL -> 0f
-        InterfaceStyle.MIX_LIQUID -> specularAlpha
+        InterfaceStyle.MIX_LIQUID -> if (isDark) specularAlpha else 0.25f
     }
 
-    val effectiveShowInnerShadow = when (currentStyle) {
-        InterfaceStyle.MINIMAL -> false
+    val effectiveShowInnerShadow = when {
+        currentStyle == InterfaceStyle.MINIMAL -> false
+        !isDark -> false
         else -> showInnerShadow
     }
 
-    val effectiveBorderBrush = borderBrush ?: remember(borderColor, currentStyle, currentAccent) {
-        if (borderColor == GlassBorder) {
-            when (currentStyle) {
-                InterfaceStyle.PURE_LIQUID_GLASS -> {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.72f),
-                            currentAccent.light.copy(alpha = 0.45f),
-                            currentAccent.primary.copy(alpha = 0.22f),
-                            Color.White.copy(alpha = 0.12f)
+    val effectiveBorderBrush = borderBrush ?: remember(borderColor, currentStyle, currentAccent, isDark, defaultBorder) {
+        if (borderColor == defaultBorder) {
+            if (isDark) {
+                when (currentStyle) {
+                    InterfaceStyle.PURE_LIQUID_GLASS -> {
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.72f),
+                                currentAccent.light.copy(alpha = 0.45f),
+                                currentAccent.primary.copy(alpha = 0.22f),
+                                Color.White.copy(alpha = 0.12f)
+                            )
                         )
-                    )
-                }
-                InterfaceStyle.MINIMAL -> {
-                    SolidColor(Color(0xFF2C2C2E))
-                }
-                InterfaceStyle.MIX_LIQUID -> {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.32f),
-                            Color.White.copy(alpha = 0.16f),
-                            Color.White.copy(alpha = 0.08f)
+                    }
+                    InterfaceStyle.MINIMAL -> {
+                        SolidColor(Color(0xFF2C2C2E))
+                    }
+                    InterfaceStyle.MIX_LIQUID -> {
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.32f),
+                                Color.White.copy(alpha = 0.16f),
+                                Color.White.copy(alpha = 0.08f)
+                            )
                         )
-                    )
+                    }
+                }
+            } else {
+                when (currentStyle) {
+                    InterfaceStyle.PURE_LIQUID_GLASS -> {
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.95f),
+                                currentAccent.primary.copy(alpha = 0.35f),
+                                Color(0xFF0F172A).copy(alpha = 0.10f)
+                            )
+                        )
+                    }
+                    InterfaceStyle.MINIMAL -> {
+                        SolidColor(Color(0xFFE2E8F0))
+                    }
+                    InterfaceStyle.MIX_LIQUID -> {
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.95f),
+                                Color(0xFF0F172A).copy(alpha = 0.12f)
+                            )
+                        )
+                    }
                 }
             }
         } else {
@@ -489,13 +526,24 @@ fun GlassCardBox(
 
     val currentStyle = LocalInterfaceStyle.current
     val currentAccent = LocalAccentColor.current
+    val isDark = LocalIsDarkTheme.current
+    val defaultSurface = GlassSurface
+    val defaultBorder = GlassBorder
 
-    val effectiveBg = remember(backgroundColor, currentStyle) {
-        if (backgroundColor == GlassSurface) {
-            when (currentStyle) {
-                InterfaceStyle.PURE_LIQUID_GLASS -> Color(0x22FFFFFF)
-                InterfaceStyle.MINIMAL -> Color(0xFF1C1C1E)
-                InterfaceStyle.MIX_LIQUID -> GlassSurface
+    val effectiveBg = remember(backgroundColor, currentStyle, isDark, defaultSurface) {
+        if (backgroundColor == defaultSurface) {
+            if (isDark) {
+                when (currentStyle) {
+                    InterfaceStyle.PURE_LIQUID_GLASS -> Color(0x22FFFFFF)
+                    InterfaceStyle.MINIMAL -> Color(0xFF1C1C1E)
+                    InterfaceStyle.MIX_LIQUID -> defaultSurface
+                }
+            } else {
+                when (currentStyle) {
+                    InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xCCFFFFFF)
+                    InterfaceStyle.MINIMAL -> Color.White
+                    InterfaceStyle.MIX_LIQUID -> Color(0xE8FFFFFF)
+                }
             }
         } else backgroundColor
     }
@@ -506,40 +554,66 @@ fun GlassCardBox(
     }
 
     val effectiveSpecularAlpha = when (currentStyle) {
-        InterfaceStyle.PURE_LIQUID_GLASS -> (specularAlpha * 2.0f).coerceAtMost(0.32f)
+        InterfaceStyle.PURE_LIQUID_GLASS -> if (isDark) (specularAlpha * 2.0f).coerceAtMost(0.32f) else 0.45f
         InterfaceStyle.MINIMAL -> 0f
-        InterfaceStyle.MIX_LIQUID -> specularAlpha
+        InterfaceStyle.MIX_LIQUID -> if (isDark) specularAlpha else 0.25f
     }
 
-    val effectiveShowInnerShadow = when (currentStyle) {
-        InterfaceStyle.MINIMAL -> false
+    val effectiveShowInnerShadow = when {
+        currentStyle == InterfaceStyle.MINIMAL -> false
+        !isDark -> false
         else -> showInnerShadow
     }
 
-    val effectiveBorderBrush = borderBrush ?: remember(borderColor, currentStyle, currentAccent) {
-        if (borderColor == GlassBorder) {
-            when (currentStyle) {
-                InterfaceStyle.PURE_LIQUID_GLASS -> {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.72f),
-                            currentAccent.light.copy(alpha = 0.45f),
-                            currentAccent.primary.copy(alpha = 0.22f),
-                            Color.White.copy(alpha = 0.12f)
+    val effectiveBorderBrush = borderBrush ?: remember(borderColor, currentStyle, currentAccent, isDark, defaultBorder) {
+        if (borderColor == defaultBorder) {
+            if (isDark) {
+                when (currentStyle) {
+                    InterfaceStyle.PURE_LIQUID_GLASS -> {
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.72f),
+                                currentAccent.light.copy(alpha = 0.45f),
+                                currentAccent.primary.copy(alpha = 0.22f),
+                                Color.White.copy(alpha = 0.12f)
+                            )
                         )
-                    )
-                }
-                InterfaceStyle.MINIMAL -> {
-                    SolidColor(Color(0xFF2C2C2E))
-                }
-                InterfaceStyle.MIX_LIQUID -> {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.32f),
-                            Color.White.copy(alpha = 0.16f),
-                            Color.White.copy(alpha = 0.08f)
+                    }
+                    InterfaceStyle.MINIMAL -> {
+                        SolidColor(Color(0xFF2C2C2E))
+                    }
+                    InterfaceStyle.MIX_LIQUID -> {
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.32f),
+                                Color.White.copy(alpha = 0.16f),
+                                Color.White.copy(alpha = 0.08f)
+                            )
                         )
-                    )
+                    }
+                }
+            } else {
+                when (currentStyle) {
+                    InterfaceStyle.PURE_LIQUID_GLASS -> {
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.95f),
+                                currentAccent.primary.copy(alpha = 0.35f),
+                                Color(0xFF0F172A).copy(alpha = 0.10f)
+                            )
+                        )
+                    }
+                    InterfaceStyle.MINIMAL -> {
+                        SolidColor(Color(0xFFE2E8F0))
+                    }
+                    InterfaceStyle.MIX_LIQUID -> {
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.95f),
+                                Color(0xFF0F172A).copy(alpha = 0.12f)
+                            )
+                        )
+                    }
                 }
             }
         } else {
@@ -643,8 +717,8 @@ fun GlassCardBox(
  */
 fun Modifier.glassCard(
     shape: Shape = RoundedCornerShape(24.dp),
-    backgroundColor: Color = GlassSurface,
-    borderColor: Color = GlassBorder,
+    backgroundColor: Color = DarkGlassSurface,
+    borderColor: Color = DarkGlassBorder,
     borderWidth: Dp = 1.dp,
     blurRadius: Dp = 0.dp,
     innerShadowColor: Color = Color.Black.copy(alpha = 0.35f),
@@ -697,7 +771,7 @@ fun Modifier.glassCard(
     }
     .border(
         borderWidth,
-        if (borderColor == GlassBorder) {
+        if (borderColor == DarkGlassBorder) {
             Brush.verticalGradient(
                 listOf(
                     Color.White.copy(alpha = 0.32f),
@@ -1054,47 +1128,90 @@ fun LiquidFloatingNavBar(
     }
 
     val currentStyle = LocalInterfaceStyle.current
+    val isDark = LocalIsDarkTheme.current
 
-    val dockBrush = remember(currentStyle, lightBluePrimary) {
-        when (currentStyle) {
-            InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.18f),
-                    Color.White.copy(alpha = 0.08f),
-                    Color(0xFF0F1118).copy(alpha = 0.88f)
+    val dockBrush = remember(currentStyle, lightBluePrimary, isDark) {
+        if (isDark) {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.18f),
+                        Color.White.copy(alpha = 0.08f),
+                        Color(0xFF0F1118).copy(alpha = 0.88f)
+                    )
                 )
-            )
-            InterfaceStyle.MINIMAL -> Brush.verticalGradient(
-                listOf(
-                    Color(0xFF10121A),
-                    Color(0xFF0A0B10)
+                InterfaceStyle.MINIMAL -> Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF10121A),
+                        Color(0xFF0A0B10)
+                    )
                 )
-            )
-            InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
-                listOf(
-                    Color(0xFF222226).copy(alpha = 0.88f),
-                    Color(0xFF141416).copy(alpha = 0.94f)
+                InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF222226).copy(alpha = 0.88f),
+                        Color(0xFF141416).copy(alpha = 0.94f)
+                    )
                 )
-            )
+            }
+        } else {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.86f),
+                        Color(0xFFF1F5FB).copy(alpha = 0.88f)
+                    )
+                )
+                InterfaceStyle.MINIMAL -> Brush.verticalGradient(
+                    listOf(
+                        Color.White,
+                        Color(0xFFF8FAFC)
+                    )
+                )
+                InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.94f),
+                        Color(0xFFEEF2F8).copy(alpha = 0.96f)
+                    )
+                )
+            }
         }
     }
 
-    val dockBorderBrush = remember(currentStyle, lightBlueLight) {
-        when (currentStyle) {
-            InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.65f),
-                    lightBlueLight.copy(alpha = 0.45f),
-                    Color.White.copy(alpha = 0.18f)
+    val dockBorderBrush = remember(currentStyle, lightBlueLight, isDark) {
+        if (isDark) {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.65f),
+                        lightBlueLight.copy(alpha = 0.45f),
+                        Color.White.copy(alpha = 0.18f)
+                    )
                 )
-            )
-            InterfaceStyle.MINIMAL -> SolidColor(Color.White.copy(alpha = 0.12f))
-            InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.22f),
-                    Color.White.copy(alpha = 0.08f)
+                InterfaceStyle.MINIMAL -> SolidColor(Color.White.copy(alpha = 0.12f))
+                InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.22f),
+                        Color.White.copy(alpha = 0.08f)
+                    )
                 )
-            )
+            }
+        } else {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
+                    listOf(
+                        Color.White,
+                        lightBluePrimary.copy(alpha = 0.35f),
+                        Color(0xFF0F172A).copy(alpha = 0.12f)
+                    )
+                )
+                InterfaceStyle.MINIMAL -> SolidColor(Color(0xFFDCE3EE))
+                InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
+                    listOf(
+                        Color.White,
+                        Color(0xFF0F172A).copy(alpha = 0.14f)
+                    )
+                )
+            }
         }
     }
 
@@ -1234,44 +1351,75 @@ fun LiquidFloatingNavBar(
                 }
             }
 
-            // Animated morphing liquid light blue glass capsule
-            val capsuleBackgroundBrush = remember(currentStyle, lightBluePrimary, lightBlueDark) {
-                when (currentStyle) {
-                    InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
-                        listOf(
-                            lightBluePrimary.copy(alpha = 0.38f),
-                            lightBlueDark.copy(alpha = 0.24f),
-                            Color.White.copy(alpha = 0.14f)
+            // Animated morphing liquid glass capsule
+            val capsuleBackgroundBrush = remember(currentStyle, lightBluePrimary, lightBlueDark, isDark) {
+                if (isDark) {
+                    when (currentStyle) {
+                        InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
+                            listOf(
+                                lightBluePrimary.copy(alpha = 0.38f),
+                                lightBlueDark.copy(alpha = 0.24f),
+                                Color.White.copy(alpha = 0.14f)
+                            )
                         )
-                    )
-                    InterfaceStyle.MINIMAL -> SolidColor(lightBluePrimary.copy(alpha = 0.16f))
-                    InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
-                        listOf(
-                            lightBluePrimary.copy(alpha = 0.28f),
-                            lightBlueDark.copy(alpha = 0.18f),
-                            Color.Black.copy(alpha = 0.22f)
+                        InterfaceStyle.MINIMAL -> SolidColor(lightBluePrimary.copy(alpha = 0.16f))
+                        InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
+                            listOf(
+                                lightBluePrimary.copy(alpha = 0.28f),
+                                lightBlueDark.copy(alpha = 0.18f),
+                                Color.Black.copy(alpha = 0.22f)
+                            )
                         )
-                    )
+                    }
+                } else {
+                    when (currentStyle) {
+                        InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
+                            listOf(
+                                lightBluePrimary.copy(alpha = 0.24f),
+                                lightBluePrimary.copy(alpha = 0.14f)
+                            )
+                        )
+                        InterfaceStyle.MINIMAL -> SolidColor(lightBluePrimary.copy(alpha = 0.15f))
+                        InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
+                            listOf(
+                                lightBluePrimary.copy(alpha = 0.22f),
+                                lightBlueLight.copy(alpha = 0.16f)
+                            )
+                        )
+                    }
                 }
             }
 
-            val capsuleBorderBrush = remember(currentStyle, lightBlueLight, lightBluePrimary) {
-                when (currentStyle) {
-                    InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.85f),
-                            lightBlueLight.copy(alpha = 0.65f),
-                            lightBluePrimary.copy(alpha = 0.40f)
+            val capsuleBorderBrush = remember(currentStyle, lightBlueLight, lightBluePrimary, isDark) {
+                if (isDark) {
+                    when (currentStyle) {
+                        InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.85f),
+                                lightBlueLight.copy(alpha = 0.65f),
+                                lightBluePrimary.copy(alpha = 0.40f)
+                            )
                         )
-                    )
-                    InterfaceStyle.MINIMAL -> SolidColor(lightBluePrimary.copy(alpha = 0.65f))
-                    InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.65f),
-                            lightBlueLight.copy(alpha = 0.45f),
-                            lightBluePrimary.copy(alpha = 0.25f)
+                        InterfaceStyle.MINIMAL -> SolidColor(lightBluePrimary.copy(alpha = 0.65f))
+                        InterfaceStyle.MIX_LIQUID -> Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.65f),
+                                lightBlueLight.copy(alpha = 0.45f),
+                                lightBluePrimary.copy(alpha = 0.25f)
+                            )
                         )
-                    )
+                    }
+                } else {
+                    when (currentStyle) {
+                        InterfaceStyle.PURE_LIQUID_GLASS -> Brush.verticalGradient(
+                            listOf(
+                                Color.White,
+                                lightBluePrimary.copy(alpha = 0.55f)
+                            )
+                        )
+                        InterfaceStyle.MINIMAL -> SolidColor(lightBluePrimary.copy(alpha = 0.50f))
+                        InterfaceStyle.MIX_LIQUID -> SolidColor(lightBluePrimary.copy(alpha = 0.45f))
+                    }
                 }
             }
 
@@ -1389,14 +1537,18 @@ fun LiquidFloatingNavBar(
                         label = "icon_offset_y"
                     )
 
+                    val selectedTabTint = if (isDark) lightBluePrimary else lightBlueDark
+                    val unselectedIconTint = if (isDark) Color.White.copy(alpha = 0.85f) else Color(0xFF475569)
+                    val unselectedTextTint = if (isDark) Color(0xFF8E8E93) else Color(0xFF64748B)
+
                     val iconColor by animateColorAsState(
-                        targetValue = if (isSelected) lightBluePrimary else Color.White.copy(alpha = 0.85f),
+                        targetValue = if (isSelected) selectedTabTint else unselectedIconTint,
                         animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
                         label = "icon_color"
                     )
 
                     val textColor by animateColorAsState(
-                        targetValue = if (isSelected) lightBluePrimary else Color(0xFF8E8E93),
+                        targetValue = if (isSelected) selectedTabTint else unselectedTextTint,
                         animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
                         label = "text_color"
                     )

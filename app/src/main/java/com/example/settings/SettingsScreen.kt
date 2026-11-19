@@ -7,8 +7,13 @@ import coil.compose.AsyncImage
 import com.example.ui.background.BackgroundPreset
 import java.io.File
 import java.io.FileOutputStream
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -35,6 +40,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Image
@@ -75,6 +81,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.alarm.MathChallengeGenerator
+import com.example.alarm.MathDifficulty
 import com.example.audio.CustomRingtoneManager
 import com.example.audio.SoundPlayer
 import com.example.data.PreferencesManager
@@ -88,9 +96,11 @@ import com.example.ui.theme.GlassBorderBright
 import com.example.ui.theme.GlassCard
 import com.example.ui.theme.GlassSurface
 import com.example.ui.theme.InterfaceStyle
+import com.example.ui.theme.LightCanvas
 import com.example.ui.theme.LiquidGlassCard
 import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalInterfaceStyle
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -106,6 +116,14 @@ fun SettingsScreen(
     val haptic = LocalHapticManager.current
     val currentAccent = LocalAccentColor.current
     val accentColor = currentAccent.primary
+    val isDark = LocalIsDarkTheme.current
+    val badgeAccentText = if (isDark) currentAccent.light else accentColor
+    val dividerColor = if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFF0F172A).copy(alpha = 0.08f)
+    val subtleSurface = if (isDark) Color.White.copy(alpha = 0.06f) else Color(0xFF0F172A).copy(alpha = 0.05f)
+    val subtleSurfaceSoft = if (isDark) Color.White.copy(alpha = 0.04f) else Color(0xFF0F172A).copy(alpha = 0.04f)
+    val switchUncheckedThumb = if (isDark) TextTertiary else Color.White
+    val switchUncheckedTrack = if (isDark) Color.White.copy(alpha = 0.1f) else Color(0xFFCBD5E1)
+    val sliderInactiveTrack = if (isDark) Color.White.copy(alpha = 0.15f) else Color(0xFFCBD5E1)
     val currentInterfaceStyle = remember(settings.interfaceStyle) {
         InterfaceStyle.fromId(settings.interfaceStyle)
     }
@@ -177,7 +195,13 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (settings.backgroundType == "Black") DeepBlack else DeepBlack.copy(alpha = 0.55f))
+            .background(
+                if (isDark) {
+                    if (settings.backgroundType == "Black") DeepBlack else DeepBlack.copy(alpha = 0.55f)
+                } else {
+                    if (settings.backgroundType == "Black") LightCanvas else LightCanvas.copy(alpha = 0.65f)
+                }
+            )
     ) {
         Column(
             modifier = Modifier
@@ -209,7 +233,7 @@ fun SettingsScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color.White,
+                        tint = TextPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -265,7 +289,7 @@ fun SettingsScreen(
                         ) {
                             Text(
                                 text = currentInterfaceStyle.title,
-                                color = currentAccent.light,
+                                color = badgeAccentText,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -296,7 +320,7 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(dividerColor)
                     )
 
                     Spacer(modifier = Modifier.height(18.dp))
@@ -308,7 +332,8 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.06f))
+                            .background(subtleSurface)
+                            .border(1.dp, GlassBorder, CircleShape)
                             .padding(4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -318,17 +343,33 @@ fun SettingsScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(CircleShape)
-                                    .background(if (isSelected) Color.White.copy(alpha = 0.22f) else Color.Transparent)
+                                    .background(
+                                        when {
+                                            isSelected && isDark -> Color.White.copy(alpha = 0.22f)
+                                            isSelected && !isDark -> Color.White
+                                            else -> Color.Transparent
+                                        }
+                                    )
+                                    .border(
+                                        width = if (isSelected && !isDark) 1.dp else 0.dp,
+                                        color = if (isSelected && !isDark) accentColor.copy(alpha = 0.35f) else Color.Transparent,
+                                        shape = CircleShape
+                                    )
                                     .clickable {
                                         haptic.buttonClick()
                                         preferencesManager.updateAppearance(mode)
                                     }
-                                    .padding(vertical = 10.dp),
+                                    .padding(vertical = 10.dp)
+                                    .testTag("theme_mode_${mode.lowercase()}"),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = mode,
-                                    color = if (isSelected) Color.White else TextSecondary,
+                                    color = when {
+                                        isSelected && isDark -> Color.White
+                                        isSelected && !isDark -> accentColor
+                                        else -> TextSecondary
+                                    },
                                     fontSize = 14.sp,
                                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                                 )
@@ -369,7 +410,7 @@ fun SettingsScreen(
                         ) {
                             Text(
                                 text = currentAccent.displayName,
-                                color = currentAccent.light,
+                                color = badgeAccentText,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -539,7 +580,7 @@ fun SettingsScreen(
                         ) {
                             Text(
                                 text = currentPreset.title,
-                                color = currentAccent.light,
+                                color = badgeAccentText,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -590,7 +631,7 @@ fun SettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(1.dp)
-                                .background(Color.White.copy(alpha = 0.08f))
+                                .background(dividerColor)
                         )
                         Spacer(modifier = Modifier.height(14.dp))
 
@@ -608,7 +649,7 @@ fun SettingsScreen(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Darkens wallpaper for high contrast & clarity",
+                                    text = if (isDark) "Darkens wallpaper for high contrast & clarity" else "Softens wallpaper for high contrast & clarity",
                                     color = TextTertiary,
                                     fontSize = 12.sp
                                 )
@@ -616,7 +657,7 @@ fun SettingsScreen(
 
                             Text(
                                 text = "${(settings.backgroundDim * 100).roundToInt()}%",
-                                color = currentAccent.light,
+                                color = badgeAccentText,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -631,21 +672,21 @@ fun SettingsScreen(
                             },
                             valueRange = 0.15f..0.85f,
                             colors = SliderDefaults.colors(
-                                thumbColor = Color.White,
+                                thumbColor = if (isDark) Color.White else accentColor,
                                 activeTrackColor = accentColor,
-                                inactiveTrackColor = Color.White.copy(alpha = 0.15f)
+                                inactiveTrackColor = sliderInactiveTrack
                             ),
                             modifier = Modifier.fillMaxWidth()
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Quick "Reset to Default Black" button
+                        // Quick "Reset to Default" button
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Color.White.copy(alpha = 0.05f))
+                                .background(subtleSurface)
                                 .clickable {
                                     haptic.buttonClick()
                                     preferencesManager.updateBackgroundType(BackgroundPreset.BLACK.id)
@@ -662,7 +703,7 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Reset to Default Black",
+                                text = if (isDark) "Reset to Default Black" else "Reset to Default Canvas",
                                 color = TextSecondary,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium
@@ -697,9 +738,10 @@ fun SettingsScreen(
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
-                                checkedTrackColor = accentColor.copy(alpha = 0.8f),
-                                uncheckedThumbColor = TextTertiary,
-                                uncheckedTrackColor = Color.White.copy(alpha = 0.1f)
+                                checkedTrackColor = accentColor.copy(alpha = 0.85f),
+                                uncheckedThumbColor = switchUncheckedThumb,
+                                uncheckedTrackColor = switchUncheckedTrack,
+                                uncheckedBorderColor = Color.Transparent
                             )
                         )
                     }
@@ -721,9 +763,10 @@ fun SettingsScreen(
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
-                                checkedTrackColor = accentColor.copy(alpha = 0.8f),
-                                uncheckedThumbColor = TextTertiary,
-                                uncheckedTrackColor = Color.White.copy(alpha = 0.1f)
+                                checkedTrackColor = accentColor.copy(alpha = 0.85f),
+                                uncheckedThumbColor = switchUncheckedThumb,
+                                uncheckedTrackColor = switchUncheckedTrack,
+                                uncheckedBorderColor = Color.Transparent
                             )
                         )
                     }
@@ -777,9 +820,9 @@ fun SettingsScreen(
                             },
                             modifier = Modifier.weight(1f),
                             colors = SliderDefaults.colors(
-                                thumbColor = Color.White,
+                                thumbColor = if (isDark) Color.White else accentColor,
                                 activeTrackColor = accentColor,
-                                inactiveTrackColor = Color.White.copy(alpha = 0.15f)
+                                inactiveTrackColor = sliderInactiveTrack
                             )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -842,7 +885,7 @@ fun SettingsScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .background(if (isSelected) accentColor.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.08f))
+                                    .background(if (isSelected) accentColor.copy(alpha = if (isDark) 0.35f else 0.16f) else subtleSurface)
                                     .border(1.dp, if (isSelected) accentColor else GlassBorder, CircleShape)
                                     .clickable {
                                         haptic.buttonClick()
@@ -856,13 +899,13 @@ fun SettingsScreen(
                                     Icon(
                                         imageVector = Icons.Default.MusicNote,
                                         contentDescription = null,
-                                        tint = if (isSelected) Color.White else accentColor,
+                                        tint = if (isSelected && isDark) Color.White else accentColor,
                                         modifier = Modifier.size(13.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = customTone.name,
-                                        color = if (isSelected) Color.White else TextSecondary,
+                                        color = if (isSelected) (if (isDark) Color.White else accentColor) else TextSecondary,
                                         fontSize = 13.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                     )
@@ -876,8 +919,18 @@ fun SettingsScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .background(if (isSelected) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.06f))
-                                    .border(1.dp, if (isSelected) Color.White.copy(alpha = 0.5f) else GlassBorder, CircleShape)
+                                    .background(
+                                        if (isSelected) {
+                                            if (isDark) Color.White.copy(alpha = 0.25f) else accentColor.copy(alpha = 0.16f)
+                                        } else subtleSurface
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (isSelected) {
+                                            if (isDark) Color.White.copy(alpha = 0.5f) else accentColor
+                                        } else GlassBorder,
+                                        CircleShape
+                                    )
                                     .clickable {
                                         haptic.buttonClick()
                                         preferencesManager.updateDefaultAlarmSound(sound)
@@ -888,7 +941,7 @@ fun SettingsScreen(
                             ) {
                                 Text(
                                     text = sound,
-                                    color = if (isSelected) Color.White else TextSecondary,
+                                    color = if (isSelected) (if (isDark) Color.White else accentColor) else TextSecondary,
                                     fontSize = 13.sp,
                                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                                 )
@@ -913,9 +966,10 @@ fun SettingsScreen(
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
-                                checkedTrackColor = accentColor.copy(alpha = 0.8f),
-                                uncheckedThumbColor = TextTertiary,
-                                uncheckedTrackColor = Color.White.copy(alpha = 0.1f)
+                                checkedTrackColor = accentColor.copy(alpha = 0.85f),
+                                uncheckedThumbColor = switchUncheckedThumb,
+                                uncheckedTrackColor = switchUncheckedTrack,
+                                uncheckedBorderColor = Color.Transparent
                             )
                         )
                     }
@@ -935,7 +989,7 @@ fun SettingsScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .background(if (isSelected) accentColor.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.06f))
+                                    .background(if (isSelected) accentColor.copy(alpha = if (isDark) 0.28f else 0.16f) else subtleSurface)
                                     .border(1.dp, if (isSelected) accentColor else GlassBorder, CircleShape)
                                     .clickable {
                                         haptic.buttonClick()
@@ -945,10 +999,242 @@ fun SettingsScreen(
                             ) {
                                 Text(
                                     text = "${mins}m",
-                                    color = if (isSelected) Color.White else TextSecondary,
+                                    color = if (isSelected) (if (isDark) Color.White else accentColor) else TextSecondary,
                                     fontSize = 13.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // Divider before Math Challenge
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(dividerColor)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Solve Math to Dismiss Global Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f).padding(end = 12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(11.dp))
+                                    .background(accentColor.copy(alpha = 0.16f))
+                                    .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(11.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Calculate,
+                                    contentDescription = null,
+                                    tint = accentColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Solve Math to Dismiss",
+                                    color = TextPrimary,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Applies to all alarms · Snooze stays free",
+                                    color = TextSecondary,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = settings.mathChallengeEnabled,
+                            onCheckedChange = { checked ->
+                                haptic.toggle(checked)
+                                preferencesManager.updateMathChallengeEnabled(checked)
+                            },
+                            modifier = Modifier.testTag("settings_math_challenge_switch"),
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = accentColor.copy(alpha = 0.85f),
+                                uncheckedThumbColor = switchUncheckedThumb,
+                                uncheckedTrackColor = switchUncheckedTrack,
+                                uncheckedBorderColor = Color.Transparent
+                            )
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = settings.mathChallengeEnabled,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 14.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(
+                                    if (isDark) {
+                                        when (currentInterfaceStyle) {
+                                            InterfaceStyle.MINIMAL -> Color(0xFF1F1F23)
+                                            InterfaceStyle.PURE_LIQUID_GLASS -> Color.White.copy(alpha = 0.06f)
+                                            InterfaceStyle.MIX_LIQUID -> Color.White.copy(alpha = 0.05f)
+                                        }
+                                    } else {
+                                        Color(0xFF0F172A).copy(alpha = 0.04f)
+                                    }
+                                )
+                                .border(
+                                    1.dp,
+                                    if (currentInterfaceStyle == InterfaceStyle.MINIMAL && isDark) Color(0xFF323236) else GlassBorder,
+                                    RoundedCornerShape(18.dp)
+                                )
+                                .padding(14.dp)
+                        ) {
+                            // Difficulty Header + Sample Equation Preview
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Difficulty",
+                                    color = TextPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(accentColor.copy(alpha = 0.16f))
+                                        .border(1.dp, accentColor.copy(alpha = 0.35f), CircleShape)
+                                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                                ) {
+                                    Text(
+                                        text = MathChallengeGenerator.sampleEquationFor(settings.mathChallengeDifficulty),
+                                        color = accentColor,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                MathDifficulty.entries.forEach { diff ->
+                                    val isSelected = settings.mathChallengeDifficulty.equals(diff.id, ignoreCase = true)
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(CircleShape)
+                                            .background(
+                                                when {
+                                                    isSelected && currentInterfaceStyle == InterfaceStyle.MINIMAL -> accentColor
+                                                    isSelected -> accentColor.copy(alpha = if (isDark) 0.28f else 0.16f)
+                                                    currentInterfaceStyle == InterfaceStyle.MINIMAL && isDark -> Color(0xFF2C2C2E)
+                                                    else -> subtleSurface
+                                                }
+                                            )
+                                            .border(
+                                                1.dp,
+                                                if (isSelected) accentColor else GlassBorder,
+                                                CircleShape
+                                            )
+                                            .clickable {
+                                                haptic.buttonClick()
+                                                preferencesManager.updateMathChallengeDifficulty(diff.id)
+                                            }
+                                            .padding(vertical = 10.dp)
+                                            .testTag("settings_math_difficulty_${diff.id.lowercase()}"),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = diff.label,
+                                            color = when {
+                                                isSelected && currentInterfaceStyle == InterfaceStyle.MINIMAL -> Color.White
+                                                isSelected && !isDark -> accentColor
+                                                isSelected -> Color.White
+                                                else -> TextSecondary
+                                            },
+                                            fontSize = 13.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Problem Count
+                            Text(
+                                text = "Problems to Solve",
+                                color = TextPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf(1, 2, 3).forEach { count ->
+                                    val isSelected = settings.mathChallengeCount == count
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(CircleShape)
+                                            .background(
+                                                when {
+                                                    isSelected && currentInterfaceStyle == InterfaceStyle.MINIMAL -> accentColor
+                                                    isSelected -> accentColor.copy(alpha = if (isDark) 0.28f else 0.16f)
+                                                    currentInterfaceStyle == InterfaceStyle.MINIMAL && isDark -> Color(0xFF2C2C2E)
+                                                    else -> subtleSurface
+                                                }
+                                            )
+                                            .border(
+                                                1.dp,
+                                                if (isSelected) accentColor else GlassBorder,
+                                                CircleShape
+                                            )
+                                            .clickable {
+                                                haptic.buttonClick()
+                                                preferencesManager.updateMathChallengeCount(count)
+                                            }
+                                            .padding(vertical = 10.dp)
+                                            .testTag("settings_math_count_$count"),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = if (count == 1) "1 Problem" else "$count Problems",
+                                            color = when {
+                                                isSelected && currentInterfaceStyle == InterfaceStyle.MINIMAL -> Color.White
+                                                isSelected && !isDark -> accentColor
+                                                isSelected -> Color.White
+                                                else -> TextSecondary
+                                            },
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -981,7 +1267,7 @@ fun SettingsScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .background(if (isSelected) accentColor.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.08f))
+                                    .background(if (isSelected) accentColor.copy(alpha = if (isDark) 0.35f else 0.16f) else subtleSurface)
                                     .border(1.dp, if (isSelected) accentColor else GlassBorder, CircleShape)
                                     .clickable {
                                         haptic.buttonClick()
@@ -994,13 +1280,13 @@ fun SettingsScreen(
                                     Icon(
                                         imageVector = Icons.Default.MusicNote,
                                         contentDescription = null,
-                                        tint = if (isSelected) Color.White else accentColor,
+                                        tint = if (isSelected && isDark) Color.White else accentColor,
                                         modifier = Modifier.size(13.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = customTone.name,
-                                        color = if (isSelected) Color.White else TextSecondary,
+                                        color = if (isSelected) (if (isDark) Color.White else accentColor) else TextSecondary,
                                         fontSize = 13.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                     )
@@ -1014,8 +1300,18 @@ fun SettingsScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .background(if (isSelected) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.06f))
-                                    .border(1.dp, if (isSelected) Color.White.copy(alpha = 0.5f) else GlassBorder, CircleShape)
+                                    .background(
+                                        if (isSelected) {
+                                            if (isDark) Color.White.copy(alpha = 0.25f) else accentColor.copy(alpha = 0.16f)
+                                        } else subtleSurface
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (isSelected) {
+                                            if (isDark) Color.White.copy(alpha = 0.5f) else accentColor
+                                        } else GlassBorder,
+                                        CircleShape
+                                    )
                                     .clickable {
                                         haptic.buttonClick()
                                         preferencesManager.updateTimerSound(sound)
@@ -1025,7 +1321,7 @@ fun SettingsScreen(
                             ) {
                                 Text(
                                     text = sound,
-                                    color = if (isSelected) Color.White else TextSecondary,
+                                    color = if (isSelected) (if (isDark) Color.White else accentColor) else TextSecondary,
                                     fontSize = 13.sp,
                                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                                 )
@@ -1067,7 +1363,7 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(18.dp))
-                            .background(Color.White.copy(alpha = 0.04f))
+                            .background(subtleSurfaceSoft)
                             .border(1.dp, GlassBorder, RoundedCornerShape(18.dp))
                             .padding(16.dp),
                         contentAlignment = Alignment.Center
@@ -1080,7 +1376,7 @@ fun SettingsScreen(
                                 modifier = Modifier
                                     .size(76.dp)
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(Color(0xFF090B12))
+                                    .background(if (isDark) Color(0xFF090B12) else Color.White)
                                     .border(2.dp, accentColor, RoundedCornerShape(20.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1133,7 +1429,7 @@ fun SettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(if (customIconBitmap == null) accentColor.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.04f))
+                                .background(if (customIconBitmap == null) accentColor.copy(alpha = 0.15f) else subtleSurfaceSoft)
                                 .border(1.dp, if (customIconBitmap == null) accentColor else GlassBorder, RoundedCornerShape(16.dp))
                                 .clickable {
                                     haptic.buttonClick()
@@ -1186,7 +1482,7 @@ fun SettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(if (customIconBitmap != null) accentColor.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.04f))
+                                .background(if (customIconBitmap != null) accentColor.copy(alpha = 0.15f) else subtleSurfaceSoft)
                                 .border(1.dp, if (customIconBitmap != null) accentColor else GlassBorder, RoundedCornerShape(16.dp))
                                 .clickable {
                                     haptic.buttonClick()
@@ -1251,7 +1547,7 @@ fun SettingsScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(16.dp))
-                                    .background(Color.White.copy(alpha = 0.04f))
+                                    .background(subtleSurfaceSoft)
                                     .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
                                     .clickable {
                                         haptic.buttonClick()
@@ -1304,7 +1600,7 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(dividerColor)
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -1784,10 +2080,14 @@ private fun AppIconStyleOption(
     onClick: () -> Unit,
     iconContent: @Composable () -> Unit
 ) {
+    val isDark = LocalIsDarkTheme.current
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (isSelected) accentColor.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.05f))
+            .background(
+                if (isSelected) accentColor.copy(alpha = 0.16f)
+                else if (isDark) Color.White.copy(alpha = 0.05f) else Color(0xFF0F172A).copy(alpha = 0.04f)
+            )
             .border(
                 width = if (isSelected) 1.5.dp else 1.dp,
                 color = if (isSelected) accentColor else GlassBorder,
@@ -1812,7 +2112,7 @@ private fun AppIconStyleOption(
                             .size(20.dp)
                             .clip(CircleShape)
                             .background(accentColor)
-                            .border(1.5.dp, DeepBlack, CircleShape),
+                            .border(1.5.dp, if (isDark) DeepBlack else Color.White, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -1858,6 +2158,8 @@ private fun InterfaceStyleCard(
     onClick: () -> Unit
 ) {
     val currentAccent = LocalAccentColor.current
+    val isDark = LocalIsDarkTheme.current
+    val badgeAccentText = if (isDark) currentAccent.light else accentColor
 
     Box(
         modifier = Modifier
@@ -1867,22 +2169,29 @@ private fun InterfaceStyleCard(
                 if (isSelected) {
                     Brush.horizontalGradient(
                         listOf(
-                            accentColor.copy(alpha = 0.18f),
-                            accentColor.copy(alpha = 0.08f)
+                            accentColor.copy(alpha = if (isDark) 0.18f else 0.14f),
+                            accentColor.copy(alpha = if (isDark) 0.08f else 0.05f)
                         )
                     )
                 } else {
                     Brush.linearGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.04f),
-                            Color.White.copy(alpha = 0.02f)
-                        )
+                        if (isDark) {
+                            listOf(
+                                Color.White.copy(alpha = 0.04f),
+                                Color.White.copy(alpha = 0.02f)
+                            )
+                        } else {
+                            listOf(
+                                Color(0xFF0F172A).copy(alpha = 0.04f),
+                                Color(0xFF0F172A).copy(alpha = 0.02f)
+                            )
+                        }
                     )
                 }
             )
             .border(
                 width = if (isSelected) 1.5.dp else 1.dp,
-                color = if (isSelected) accentColor.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.08f),
+                color = if (isSelected) accentColor.copy(alpha = 0.75f) else GlassBorder,
                 shape = RoundedCornerShape(16.dp)
             )
             .clickable(
@@ -1906,13 +2215,23 @@ private fun InterfaceStyleCard(
                         when (style) {
                             InterfaceStyle.PURE_LIQUID_GLASS -> Modifier
                                 .background(
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            Color.White.copy(alpha = 0.28f),
-                                            accentColor.copy(alpha = 0.22f),
-                                            Color(0xFF0F1118)
+                                    if (isDark) {
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = 0.28f),
+                                                accentColor.copy(alpha = 0.22f),
+                                                Color(0xFF0F1118)
+                                            )
                                         )
-                                    )
+                                    } else {
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.White,
+                                                accentColor.copy(alpha = 0.22f),
+                                                Color(0xFFEAF2FC)
+                                            )
+                                        )
+                                    }
                                 )
                                 .border(
                                     1.2.dp,
@@ -1927,30 +2246,48 @@ private fun InterfaceStyleCard(
                                 )
 
                             InterfaceStyle.MINIMAL -> Modifier
-                                .background(Color(0xFF0C0E14))
+                                .background(if (isDark) Color(0xFF0C0E14) else Color.White)
                                 .border(
                                     1.dp,
-                                    Color.White.copy(alpha = 0.16f),
+                                    if (isDark) Color.White.copy(alpha = 0.16f) else Color(0xFFCBD5E1),
                                     RoundedCornerShape(12.dp)
                                 )
 
                             InterfaceStyle.MIX_LIQUID -> Modifier
                                 .background(
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            Color(0xFF22242E),
-                                            Color(0xFF13141B)
+                                    if (isDark) {
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color(0xFF22242E),
+                                                Color(0xFF13141B)
+                                            )
                                         )
-                                    )
+                                    } else {
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.White,
+                                                Color(0xFFE8EFF9)
+                                            )
+                                        )
+                                    }
                                 )
                                 .border(
                                     1.dp,
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            Color.White.copy(alpha = 0.40f),
-                                            Color.White.copy(alpha = 0.10f)
+                                    if (isDark) {
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = 0.40f),
+                                                Color.White.copy(alpha = 0.10f)
+                                            )
                                         )
-                                    ),
+                                    } else {
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.White,
+                                                Color(0xFFCBD5E1)
+                                            )
+                                        )
+                                    },
                                     RoundedCornerShape(12.dp)
                                 )
                         }
@@ -2020,13 +2357,14 @@ private fun InterfaceStyleCard(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .background(
-                                if (isSelected) accentColor.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f)
+                                if (isSelected) accentColor.copy(alpha = 0.18f)
+                                else if (isDark) Color.White.copy(alpha = 0.06f) else Color(0xFF0F172A).copy(alpha = 0.06f)
                             )
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = style.tag,
-                            color = if (isSelected) currentAccent.light else TextTertiary,
+                            color = if (isSelected) badgeAccentText else TextTertiary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -2055,7 +2393,7 @@ private fun InterfaceStyleCard(
                     )
                     .border(
                         width = 1.5.dp,
-                        color = if (isSelected) accentColor else Color.White.copy(alpha = 0.35f),
+                        color = if (isSelected) accentColor else TextTertiary.copy(alpha = 0.5f),
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -2064,7 +2402,7 @@ private fun InterfaceStyleCard(
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Selected",
-                        tint = DeepBlack,
+                        tint = Color.White,
                         modifier = Modifier.size(14.dp)
                     )
                 }
@@ -2087,6 +2425,8 @@ private fun BackgroundOptionCard(
     onRemovePhoto: () -> Unit
 ) {
     val currentAccent = LocalAccentColor.current
+    val isDark = LocalIsDarkTheme.current
+    val badgeAccentText = if (isDark) currentAccent.light else accentColor
     val hasCustomPhoto = preset == BackgroundPreset.CUSTOM_PHOTO &&
             !customPhotoPath.isNullOrEmpty() && File(customPhotoPath).exists()
 
@@ -2098,22 +2438,29 @@ private fun BackgroundOptionCard(
                 if (isSelected) {
                     Brush.horizontalGradient(
                         listOf(
-                            accentColor.copy(alpha = 0.18f),
-                            accentColor.copy(alpha = 0.08f)
+                            accentColor.copy(alpha = if (isDark) 0.18f else 0.14f),
+                            accentColor.copy(alpha = if (isDark) 0.08f else 0.05f)
                         )
                     )
                 } else {
                     Brush.linearGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.04f),
-                            Color.White.copy(alpha = 0.02f)
-                        )
+                        if (isDark) {
+                            listOf(
+                                Color.White.copy(alpha = 0.04f),
+                                Color.White.copy(alpha = 0.02f)
+                            )
+                        } else {
+                            listOf(
+                                Color(0xFF0F172A).copy(alpha = 0.04f),
+                                Color(0xFF0F172A).copy(alpha = 0.02f)
+                            )
+                        }
                     )
                 }
             )
             .border(
                 width = if (isSelected) 1.5.dp else 1.dp,
-                color = if (isSelected) accentColor.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.08f),
+                color = if (isSelected) accentColor.copy(alpha = 0.75f) else GlassBorder,
                 shape = RoundedCornerShape(16.dp)
             )
             .clickable(
@@ -2153,13 +2500,14 @@ private fun BackgroundOptionCard(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(
-                                        if (isSelected) accentColor.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f)
+                                        if (isSelected) accentColor.copy(alpha = 0.18f)
+                                        else if (isDark) Color.White.copy(alpha = 0.06f) else Color(0xFF0F172A).copy(alpha = 0.06f)
                                     )
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = "DEFAULT",
-                                    color = if (isSelected) currentAccent.light else TextTertiary,
+                                    color = if (isSelected) badgeAccentText else TextTertiary,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -2188,7 +2536,7 @@ private fun BackgroundOptionCard(
                         )
                         .border(
                             width = 1.5.dp,
-                            color = if (isSelected) accentColor else Color.White.copy(alpha = 0.35f),
+                            color = if (isSelected) accentColor else TextTertiary.copy(alpha = 0.5f),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -2197,7 +2545,7 @@ private fun BackgroundOptionCard(
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = "Selected",
-                            tint = DeepBlack,
+                            tint = Color.White,
                             modifier = Modifier.size(14.dp)
                         )
                     }
@@ -2216,7 +2564,7 @@ private fun BackgroundOptionCard(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(accentColor.copy(alpha = 0.20f))
+                            .background(accentColor.copy(alpha = 0.18f))
                             .border(1.dp, accentColor.copy(alpha = 0.40f), RoundedCornerShape(10.dp))
                             .clickable { onPickPhoto() }
                             .padding(vertical = 8.dp),
@@ -2226,13 +2574,13 @@ private fun BackgroundOptionCard(
                         Icon(
                             imageVector = Icons.Default.Image,
                             contentDescription = "Choose Photo",
-                            tint = currentAccent.light,
+                            tint = badgeAccentText,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = if (hasCustomPhoto) "Change Photo" else "Choose from Gallery",
-                            color = currentAccent.light,
+                            color = badgeAccentText,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -2243,7 +2591,7 @@ private fun BackgroundOptionCard(
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Color.White.copy(alpha = 0.08f))
+                                .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFF0F172A).copy(alpha = 0.06f))
                                 .clickable { onRemovePhoto() }
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.Center,
@@ -2278,11 +2626,12 @@ private fun BackgroundThumbnailPreview(
     accentColor: Color,
     customPhotoPath: String?
 ) {
+    val isDark = LocalIsDarkTheme.current
     Box(
         modifier = Modifier
             .size(46.dp)
             .clip(RoundedCornerShape(10.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+            .border(1.dp, GlassBorder, RoundedCornerShape(10.dp)),
         contentAlignment = Alignment.Center
     ) {
         when (preset) {
@@ -2290,7 +2639,7 @@ private fun BackgroundThumbnailPreview(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black)
+                        .background(if (isDark) Color.Black else LightCanvas)
                 )
             }
 
@@ -2395,13 +2744,13 @@ private fun BackgroundThumbnailPreview(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.White.copy(alpha = 0.06f)),
+                            .background(if (isDark) Color.White.copy(alpha = 0.06f) else Color(0xFF0F172A).copy(alpha = 0.06f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Image,
                             contentDescription = "Custom Photo",
-                            tint = Color.White.copy(alpha = 0.7f),
+                            tint = TextSecondary,
                             modifier = Modifier.size(20.dp)
                         )
                     }

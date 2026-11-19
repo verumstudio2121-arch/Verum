@@ -65,6 +65,7 @@ import com.example.ui.theme.GlassSurface
 import com.example.ui.theme.HiTechClockTheme
 import com.example.ui.theme.InterfaceStyle
 import com.example.ui.theme.LiquidFloatingNavBar
+import com.example.ui.theme.TextPrimary
 import com.example.util.LocalHapticManager
 import com.example.util.rememberHapticManager
 import com.example.worldclock.WorldClockRepository
@@ -216,7 +217,7 @@ class MainActivity : ComponentActivity() {
                                             Icon(
                                                 imageVector = Icons.Default.Settings,
                                                 contentDescription = "Settings",
-                                                tint = Color.White.copy(alpha = 0.85f),
+                                                tint = TextPrimary.copy(alpha = 0.85f),
                                                 modifier = Modifier.size(20.dp)
                                             )
                                         }

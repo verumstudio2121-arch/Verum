@@ -19,7 +19,10 @@ data class AppSettings(
     val timerSound: String = "Bell",
     val backgroundType: String = "Black", // "Black" (Default), "Cosmos", "Cyber Grid", "Aurora Wave", "Midnight Deep", "Minimal Slate", "Custom Photo"
     val customPhotoPath: String? = null,
-    val backgroundDim: Float = 0.40f
+    val backgroundDim: Float = 0.40f,
+    val mathChallengeEnabled: Boolean = false,
+    val mathChallengeDifficulty: String = "Medium", // "Easy", "Medium", "Hard"
+    val mathChallengeCount: Int = 1 // 1, 2, 3
 )
 
 class PreferencesManager(context: Context) {
@@ -43,7 +46,10 @@ class PreferencesManager(context: Context) {
             timerSound = prefs.getString("timer_sound", "Bell") ?: "Bell",
             backgroundType = prefs.getString("background_type", "Black") ?: "Black",
             customPhotoPath = prefs.getString("custom_photo_path", null),
-            backgroundDim = prefs.getFloat("background_dim", 0.40f)
+            backgroundDim = prefs.getFloat("background_dim", 0.40f),
+            mathChallengeEnabled = prefs.getBoolean("math_challenge_enabled", false),
+            mathChallengeDifficulty = prefs.getString("math_challenge_difficulty", "Medium") ?: "Medium",
+            mathChallengeCount = prefs.getInt("math_challenge_count", 1).coerceIn(1, 3)
         )
     }
 
@@ -115,5 +121,25 @@ class PreferencesManager(context: Context) {
         val clamped = dim.coerceIn(0.0f, 0.90f)
         prefs.edit().putFloat("background_dim", clamped).apply()
         _settings.value = _settings.value.copy(backgroundDim = clamped)
+    }
+
+    fun updateMathChallengeEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("math_challenge_enabled", enabled).apply()
+        _settings.value = _settings.value.copy(mathChallengeEnabled = enabled)
+    }
+
+    fun updateMathChallengeDifficulty(difficulty: String) {
+        val normalized = when (difficulty) {
+            "Easy", "Medium", "Hard" -> difficulty
+            else -> "Medium"
+        }
+        prefs.edit().putString("math_challenge_difficulty", normalized).apply()
+        _settings.value = _settings.value.copy(mathChallengeDifficulty = normalized)
+    }
+
+    fun updateMathChallengeCount(count: Int) {
+        val clamped = count.coerceIn(1, 3)
+        prefs.edit().putInt("math_challenge_count", clamped).apply()
+        _settings.value = _settings.value.copy(mathChallengeCount = clamped)
     }
 }

@@ -16,33 +16,33 @@ import androidx.core.view.WindowCompat
 private fun createHiTechDarkColorScheme(accentColor: Color) = darkColorScheme(
     primary = Color.White,
     onPrimary = DeepBlack,
-    primaryContainer = GlassSurfaceElevated,
+    primaryContainer = DarkGlassSurfaceElevated,
     onPrimaryContainer = Color.White,
     secondary = accentColor,
     onSecondary = DeepBlack,
     background = DeepBlack,
-    onBackground = TextPrimary,
+    onBackground = DarkTextPrimary,
     surface = ObsidianBlack,
-    onSurface = TextPrimary,
-    surfaceVariant = GlassSurface,
-    onSurfaceVariant = TextSecondary,
-    outline = GlassBorder
+    onSurface = DarkTextPrimary,
+    surfaceVariant = DarkGlassSurface,
+    onSurfaceVariant = DarkTextSecondary,
+    outline = DarkGlassBorder
 )
 
 private fun createHiTechLightColorScheme(accentColor: Color) = lightColorScheme(
-    primary = Color.Black,
+    primary = LightInk,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE5E7EB),
-    onPrimaryContainer = Color.Black,
+    primaryContainer = Color(0xFFE6ECF5),
+    onPrimaryContainer = LightInk,
     secondary = accentColor,
     onSecondary = Color.White,
-    background = Color(0xFF0F1015),
-    onBackground = Color.White,
-    surface = Color(0xFF161820),
-    onSurface = Color.White,
-    surfaceVariant = Color(0x22FFFFFF),
-    onSurfaceVariant = Color(0xCCFFFFFF),
-    outline = Color(0x33FFFFFF)
+    background = LightCanvas,
+    onBackground = LightInk,
+    surface = LightSurface,
+    onSurface = LightInk,
+    surfaceVariant = Color(0xFFE8EEF7),
+    onSurfaceVariant = Color(0xFF475569),
+    outline = Color(0x1F0F172A)
 )
 
 @Composable
@@ -68,7 +68,20 @@ fun HiTechClockTheme(
             InterfaceStyle.MIX_LIQUID -> base
         }
     } else {
-        createHiTechLightColorScheme(accentTheme.primary)
+        val base = createHiTechLightColorScheme(accentTheme.primary)
+        when (interfaceStyle) {
+            InterfaceStyle.MINIMAL -> base.copy(
+                background = Color(0xFFF5F6F8),
+                surface = Color.White,
+                outline = Color(0xFFE2E8F0)
+            )
+            InterfaceStyle.PURE_LIQUID_GLASS -> base.copy(
+                background = Color(0xFFEEF3FA),
+                surface = Color(0xD9FFFFFF),
+                outline = Color(0x280F172A)
+            )
+            InterfaceStyle.MIX_LIQUID -> base
+        }
     }
 
     val view = LocalView.current
@@ -76,8 +89,10 @@ fun HiTechClockTheme(
         SideEffect {
             val window = (view.context as? Activity)?.window
             if (window != null) {
-                window.statusBarColor = DeepBlack.toArgb()
-                window.navigationBarColor = DeepBlack.toArgb()
+                @Suppress("DEPRECATION")
+                window.statusBarColor = Color.Transparent.toArgb()
+                @Suppress("DEPRECATION")
+                window.navigationBarColor = Color.Transparent.toArgb()
                 val controller = WindowCompat.getInsetsController(window, view)
                 controller.isAppearanceLightStatusBars = !darkTheme
                 controller.isAppearanceLightNavigationBars = !darkTheme
@@ -86,6 +101,7 @@ fun HiTechClockTheme(
     }
 
     CompositionLocalProvider(
+        LocalIsDarkTheme provides darkTheme,
         LocalAccentColor provides accentTheme,
         LocalInterfaceStyle provides interfaceStyle
     ) {

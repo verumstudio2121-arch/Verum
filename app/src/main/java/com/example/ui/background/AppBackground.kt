@@ -21,19 +21,21 @@ import coil.compose.AsyncImage
 import com.example.ui.theme.AccentTheme
 import com.example.ui.theme.DeepBlack
 import com.example.ui.theme.InterfaceStyle
+import com.example.ui.theme.LightCanvas
+import com.example.ui.theme.LocalIsDarkTheme
 import java.io.File
 import kotlin.random.Random
 
 /**
  * Predefined background options for HiTech Clock.
- * Pure Black is the default background.
+ * Pure Black (or Crisp Porcelain in Light Mode) is the default background.
  */
 enum class BackgroundPreset(
     val id: String,
     val title: String,
     val subtitle: String
 ) {
-    BLACK("Black", "Pure Black", "Default OLED black"),
+    BLACK("Black", "Pure Canvas", "Default clean background"),
     COSMOS("Cosmos", "Deep Cosmos", "Starfield nebula & deep space"),
     CYBER_GRID("Cyber Grid", "Cyber Grid", "Neon synth perspective grid"),
     AURORA_WAVE("Aurora Wave", "Liquid Aurora", "Flowing glass waves & refractions"),
@@ -70,61 +72,135 @@ fun AppBackground(
     accentTheme: AccentTheme,
     modifier: Modifier = Modifier
 ) {
+    val isDark = LocalIsDarkTheme.current
     val preset = remember(backgroundType) { BackgroundPreset.fromId(backgroundType) }
 
     Box(modifier = modifier.fillMaxSize()) {
         Crossfade(
-            targetState = preset,
-            animationSpec = tween(durationMillis = 350),
+            targetState = preset to isDark,
+            animationSpec = tween(durationMillis = 320),
             label = "BackgroundCrossfade"
-        ) { targetPreset ->
+        ) { (targetPreset, darkMode) ->
             when (targetPreset) {
                 BackgroundPreset.BLACK -> {
-                    // Default Pure Black
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black)
-                    )
+                    if (darkMode) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color(0xFFF8FAFD),
+                                            LightCanvas,
+                                            Color(0xFFEAF0F8)
+                                        )
+                                    )
+                                )
+                        )
+                    }
                 }
 
                 BackgroundPreset.COSMOS -> {
-                    CosmosBackground(accentColor = accentTheme.primary)
+                    if (darkMode) {
+                        CosmosBackground(accentColor = accentTheme.primary)
+                    } else {
+                        LightAtmosphericBackground(
+                            baseTop = Color(0xFFEEF4FC),
+                            baseBottom = Color(0xFFE2EBF8),
+                            accentColor = accentTheme.primary,
+                            secondaryColor = Color(0xFFA78BFA)
+                        )
+                    }
                 }
 
                 BackgroundPreset.CYBER_GRID -> {
-                    CyberGridBackground(accentColor = accentTheme.primary)
+                    if (darkMode) {
+                        CyberGridBackground(accentColor = accentTheme.primary)
+                    } else {
+                        LightCyberGridBackground(accentColor = accentTheme.primary)
+                    }
                 }
 
                 BackgroundPreset.AURORA_WAVE -> {
-                    AuroraWaveBackground(
-                        primaryColor = accentTheme.primary,
-                        lightColor = accentTheme.light
-                    )
+                    if (darkMode) {
+                        AuroraWaveBackground(
+                            primaryColor = accentTheme.primary,
+                            lightColor = accentTheme.light
+                        )
+                    } else {
+                        LightAtmosphericBackground(
+                            baseTop = Color(0xFFF5F8FD),
+                            baseBottom = Color(0xFFE8F0FA),
+                            accentColor = accentTheme.primary,
+                            secondaryColor = accentTheme.light
+                        )
+                    }
                 }
 
                 BackgroundPreset.MIDNIGHT_DEEP -> {
-                    MidnightDeepBackground(accentColor = accentTheme.primary)
+                    if (darkMode) {
+                        MidnightDeepBackground(accentColor = accentTheme.primary)
+                    } else {
+                        LightAtmosphericBackground(
+                            baseTop = Color(0xFFEBF2FB),
+                            baseBottom = Color(0xFFDCE7F5),
+                            accentColor = accentTheme.dark,
+                            secondaryColor = accentTheme.primary
+                        )
+                    }
                 }
 
                 BackgroundPreset.MINIMAL_SLATE -> {
-                    MinimalSlateBackground()
+                    if (darkMode) {
+                        MinimalSlateBackground()
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            Color(0xFFF4F6F9),
+                                            Color(0xFFEBEEF3),
+                                            Color(0xFFE3E7EE)
+                                        )
+                                    )
+                                )
+                        )
+                    }
                 }
 
                 BackgroundPreset.CUSTOM_PHOTO -> {
-                    CustomPhotoBackground(customPhotoPath = customPhotoPath)
+                    CustomPhotoBackground(customPhotoPath = customPhotoPath, isDark = darkMode)
                 }
             }
         }
 
-        // Configurable Dark Dimming Scrim (applied over non-black backgrounds or custom photo)
+        // Configurable Scrim (Dark scrim in Dark mode, soft frosted light scrim in Light mode)
         if (preset != BackgroundPreset.BLACK) {
-            val scrimAlpha = backgroundDim.coerceIn(0.15f, 0.85f)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = scrimAlpha))
-            )
+            val scrimAlpha = if (isDark) {
+                backgroundDim.coerceIn(0.15f, 0.85f)
+            } else if (preset == BackgroundPreset.CUSTOM_PHOTO) {
+                (backgroundDim * 0.85f).coerceIn(0.28f, 0.78f)
+            } else {
+                0f
+            }
+            if (scrimAlpha > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            if (isDark) Color.Black.copy(alpha = scrimAlpha)
+                            else Color(0xFFF4F7FC).copy(alpha = scrimAlpha)
+                        )
+                )
+            }
         }
 
         // Liquid Glass Theme Signature Ambient Refractions
@@ -136,8 +212,8 @@ fun AppBackground(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            accentTheme.primary.copy(alpha = 0.12f),
-                            accentTheme.dark.copy(alpha = 0.04f),
+                            accentTheme.primary.copy(alpha = if (isDark) 0.12f else 0.16f),
+                            accentTheme.dark.copy(alpha = if (isDark) 0.04f else 0.05f),
                             Color.Transparent
                         ),
                         center = Offset(canvasWidth * 0.5f, canvasHeight * 0.22f),
@@ -148,7 +224,7 @@ fun AppBackground(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            accentTheme.light.copy(alpha = 0.07f),
+                            accentTheme.light.copy(alpha = if (isDark) 0.07f else 0.14f),
                             Color.Transparent
                         ),
                         center = Offset(canvasWidth * 0.85f, canvasHeight * 0.80f),
@@ -156,6 +232,95 @@ fun AppBackground(
                     )
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun LightAtmosphericBackground(
+    baseTop: Color,
+    baseBottom: Color,
+    accentColor: Color,
+    secondaryColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier.fillMaxSize()) {
+        val w = size.width
+        val h = size.height
+        drawRect(
+            brush = Brush.verticalGradient(listOf(baseTop, baseBottom))
+        )
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    accentColor.copy(alpha = 0.20f),
+                    Color.Transparent
+                ),
+                center = Offset(w * 0.75f, h * 0.22f),
+                radius = w * 0.90f
+            )
+        )
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    secondaryColor.copy(alpha = 0.16f),
+                    Color.Transparent
+                ),
+                center = Offset(w * 0.20f, h * 0.78f),
+                radius = w * 0.85f
+            )
+        )
+    }
+}
+
+@Composable
+private fun LightCyberGridBackground(
+    accentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color(0xFFF1F5FB))
+    ) {
+        val w = size.width
+        val h = size.height
+        val horizonY = h * 0.52f
+
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    accentColor.copy(alpha = 0.22f),
+                    Color.Transparent
+                ),
+                center = Offset(w * 0.5f, horizonY),
+                radius = w * 0.8f
+            )
+        )
+
+        val numHorizLines = 14
+        for (i in 1..numHorizLines) {
+            val t = (i.toFloat() / numHorizLines)
+            val y = horizonY + (h - horizonY) * (t * t)
+            val lineAlpha = (0.08f + 0.22f * t).coerceIn(0.08f, 0.30f)
+            drawLine(
+                color = accentColor.copy(alpha = lineAlpha),
+                start = Offset(0f, y),
+                end = Offset(w, y),
+                strokeWidth = 1f + 1.1f * t
+            )
+        }
+
+        val vp = Offset(w * 0.5f, horizonY)
+        val numRays = 12
+        for (i in 0..numRays) {
+            val bottomX = (w / numRays) * i
+            drawLine(
+                color = accentColor.copy(alpha = 0.15f),
+                start = vp,
+                end = Offset(bottomX, h),
+                strokeWidth = 1.1f
+            )
         }
     }
 }
@@ -429,6 +594,7 @@ private fun MinimalSlateBackground(
 @Composable
 private fun CustomPhotoBackground(
     customPhotoPath: String?,
+    isDark: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val file = remember(customPhotoPath) {
@@ -461,11 +627,11 @@ private fun CustomPhotoBackground(
             )
         }
     } else {
-        // Fallback to Pitch Black
+        // Fallback to Pitch Black in dark mode or Light Canvas in light mode
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(if (isDark) Color.Black else LightCanvas)
         )
     }
 }

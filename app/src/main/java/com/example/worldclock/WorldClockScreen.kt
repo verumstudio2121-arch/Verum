@@ -65,6 +65,7 @@ import com.example.ui.theme.GlassBorderBright
 import com.example.ui.theme.GlassSurface
 import com.example.ui.theme.GlassSurfaceElevated
 import com.example.ui.theme.LiquidGlassCard
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -115,11 +116,12 @@ fun WorldClockScreen(
                     // In-app HiTech Clock Logo (Displays custom gallery photo if active)
                     val customLogoBitmap = com.example.util.LocalInAppLogoBitmap.current
                     val accentColor = com.example.ui.theme.LocalAccentColor.current.primary
+                    val isDark = LocalIsDarkTheme.current
                     Box(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(RoundedCornerShape(11.dp))
-                            .background(Color(0xFF090B12))
+                            .background(if (isDark) Color(0xFF090B12) else Color.White)
                             .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(11.dp))
                             .clickable {
                                 haptic.buttonClick()
@@ -161,7 +163,7 @@ fun WorldClockScreen(
                     ) {
                         Text(
                             text = if (isEditMode) "Done" else "Edit",
-                            color = if (isEditMode) Color.White else TextSecondary,
+                            color = if (isEditMode) TextPrimary else TextSecondary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -185,7 +187,7 @@ fun WorldClockScreen(
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = Color.White.copy(alpha = 0.85f),
+                            tint = TextPrimary.copy(alpha = 0.85f),
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -208,7 +210,7 @@ fun WorldClockScreen(
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Add City",
-                            tint = Color.White,
+                            tint = TextPrimary,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -317,7 +319,7 @@ fun WorldClockScreen(
                                         Icon(
                                             imageVector = Icons.Default.KeyboardArrowUp,
                                             contentDescription = "Move Up",
-                                            tint = if (index > 0) Color.White else TextTertiary
+                                            tint = if (index > 0) TextPrimary else TextTertiary
                                         )
                                     }
 
@@ -332,7 +334,7 @@ fun WorldClockScreen(
                                         Icon(
                                             imageVector = Icons.Default.KeyboardArrowDown,
                                             contentDescription = "Move Down",
-                                            tint = if (index < userCities.size - 1) Color.White else TextTertiary
+                                            tint = if (index < userCities.size - 1) TextPrimary else TextTertiary
                                         )
                                     }
 
@@ -391,11 +393,13 @@ fun CityPickerBottomSheet(
         }
     }
 
+    val isDark = LocalIsDarkTheme.current
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color(0xFF14151C),
-        contentColor = Color.White,
+        containerColor = if (isDark) Color(0xFF14151C) else Color(0xFFF7F9FC),
+        contentColor = TextPrimary,
         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
         dragHandle = {
             Box(
@@ -404,7 +408,7 @@ fun CityPickerBottomSheet(
                     .width(44.dp)
                     .height(4.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.25f))
+                    .background(TextTertiary.copy(alpha = 0.45f))
             )
         }
     ) {
@@ -456,9 +460,9 @@ fun CityPickerBottomSheet(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = GlassBorderBright,
                     unfocusedBorderColor = GlassBorder,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    cursorColor = Color.White
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = TextPrimary
                 ),
                 shape = CircleShape
             )

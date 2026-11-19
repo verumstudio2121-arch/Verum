@@ -74,6 +74,7 @@ import com.example.ui.theme.InterfaceStyle
 import com.example.ui.theme.LiquidGlassCard
 import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalInterfaceStyle
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.TextDisabled
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
@@ -103,6 +104,7 @@ fun AlarmScreen(
     val currentStyle = LocalInterfaceStyle.current
     val currentAccent = LocalAccentColor.current
     val accentColor = currentAccent.primary
+    val isDark = LocalIsDarkTheme.current
 
     // Request POST_NOTIFICATIONS permission on Android 13+
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -115,16 +117,13 @@ fun AlarmScreen(
         }
     }
 
-    val screenBg = when (currentStyle) {
-        InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFF060810)
-        InterfaceStyle.MINIMAL -> Color(0xFF000000)
-        InterfaceStyle.MIX_LIQUID -> DeepBlack
-    }
+    val minimalSurface = if (isDark) Color(0xFF1C1C1E) else Color.White
+    val minimalBorder = if (isDark) Color(0xFF2C2C2E) else Color(0xFFE2E8F0)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(screenBg)
+            .background(Color.Transparent)
     ) {
         Column(
             modifier = Modifier
@@ -147,7 +146,7 @@ fun AlarmScreen(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(RoundedCornerShape(11.dp))
-                            .background(Color(0xFF090B12))
+                            .background(if (isDark) Color(0xFF090B12) else Color.White)
                             .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(11.dp))
                             .clickable {
                                 haptic.buttonClick()
@@ -178,10 +177,10 @@ fun AlarmScreen(
                     Box(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1C1C1E) else GlassSurface)
+                            .background(if (currentStyle == InterfaceStyle.MINIMAL) minimalSurface else GlassSurface)
                             .border(
                                 1.dp,
-                                if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassBorder,
+                                if (currentStyle == InterfaceStyle.MINIMAL) minimalBorder else GlassBorder,
                                 CircleShape
                             )
                             .clickable {
@@ -193,7 +192,7 @@ fun AlarmScreen(
                     ) {
                         Text(
                             text = if (isEditMode) "Done" else "Edit",
-                            color = if (isEditMode) Color.White else TextSecondary,
+                            color = if (isEditMode) TextPrimary else TextSecondary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -205,10 +204,10 @@ fun AlarmScreen(
                     Box(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1C1C1E) else GlassSurface)
+                            .background(if (currentStyle == InterfaceStyle.MINIMAL) minimalSurface else GlassSurface)
                             .border(
                                 1.dp,
-                                if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassBorder,
+                                if (currentStyle == InterfaceStyle.MINIMAL) minimalBorder else GlassBorder,
                                 CircleShape
                             )
                             .clickable {
@@ -249,10 +248,10 @@ fun AlarmScreen(
                         modifier = Modifier
                             .size(42.dp)
                             .clip(CircleShape)
-                            .background(if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1C1C1E) else GlassSurface)
+                            .background(if (currentStyle == InterfaceStyle.MINIMAL) minimalSurface else GlassSurface)
                             .border(
                                 1.dp,
-                                if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassBorder,
+                                if (currentStyle == InterfaceStyle.MINIMAL) minimalBorder else GlassBorder,
                                 CircleShape
                             )
                             .clickable {
@@ -265,7 +264,7 @@ fun AlarmScreen(
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = Color.White.copy(alpha = 0.85f),
+                            tint = TextPrimary.copy(alpha = 0.85f),
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -279,7 +278,7 @@ fun AlarmScreen(
                             .clip(CircleShape)
                             .background(
                                 when (currentStyle) {
-                                    InterfaceStyle.PURE_LIQUID_GLASS -> accentColor.copy(alpha = 0.28f)
+                                    InterfaceStyle.PURE_LIQUID_GLASS -> accentColor.copy(alpha = if (isDark) 0.28f else 0.16f)
                                     InterfaceStyle.MINIMAL -> Color(0xFF1685F8)
                                     InterfaceStyle.MIX_LIQUID -> GlassSurfaceElevated
                                 }
@@ -303,7 +302,11 @@ fun AlarmScreen(
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Add Alarm",
-                            tint = Color.White,
+                            tint = when {
+                                currentStyle == InterfaceStyle.MINIMAL -> Color.White
+                                currentStyle == InterfaceStyle.PURE_LIQUID_GLASS && !isDark -> accentColor
+                                else -> TextPrimary
+                            },
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -368,51 +371,89 @@ fun AlarmScreen(
                                 when (currentStyle) {
                                     InterfaceStyle.PURE_LIQUID_GLASS -> Modifier
                                         .background(
-                                            Brush.verticalGradient(
-                                                listOf(
-                                                    Color.White.copy(alpha = 0.14f),
-                                                    accentColor.copy(alpha = 0.08f),
-                                                    Color(0xFF10121C).copy(alpha = 0.75f)
+                                            if (isDark) {
+                                                Brush.verticalGradient(
+                                                    listOf(
+                                                        Color.White.copy(alpha = 0.14f),
+                                                        accentColor.copy(alpha = 0.08f),
+                                                        Color(0xFF10121C).copy(alpha = 0.75f)
+                                                    )
                                                 )
-                                            )
+                                            } else {
+                                                Brush.verticalGradient(
+                                                    listOf(
+                                                        Color.White.copy(alpha = 0.90f),
+                                                        accentColor.copy(alpha = 0.06f),
+                                                        Color(0xFFF1F5FB).copy(alpha = 0.92f)
+                                                    )
+                                                )
+                                            }
                                         )
                                         .border(
                                             1.2.dp,
-                                            Brush.verticalGradient(
-                                                listOf(
-                                                    Color.White.copy(alpha = 0.65f),
-                                                    currentAccent.light.copy(alpha = 0.40f),
-                                                    Color.White.copy(alpha = 0.10f)
+                                            if (isDark) {
+                                                Brush.verticalGradient(
+                                                    listOf(
+                                                        Color.White.copy(alpha = 0.65f),
+                                                        currentAccent.light.copy(alpha = 0.40f),
+                                                        Color.White.copy(alpha = 0.10f)
+                                                    )
                                                 )
-                                            ),
+                                            } else {
+                                                Brush.verticalGradient(
+                                                    listOf(
+                                                        Color.White,
+                                                        accentColor.copy(alpha = 0.24f),
+                                                        Color(0xFFCBD5E1).copy(alpha = 0.65f)
+                                                    )
+                                                )
+                                            },
                                             cardShape
                                         )
 
                                     InterfaceStyle.MINIMAL -> Modifier
-                                        .background(Color(0xFF1C1C1E))
+                                        .background(minimalSurface)
                                         .border(
                                             1.dp,
-                                            Color(0xFF2C2C2E),
+                                            minimalBorder,
                                             cardShape
                                         )
 
                                     InterfaceStyle.MIX_LIQUID -> Modifier
                                         .background(
-                                            Brush.verticalGradient(
-                                                listOf(
-                                                    Color(0xFF20222A).copy(alpha = 0.92f),
-                                                    Color(0xFF13141A).copy(alpha = 0.96f)
+                                            if (isDark) {
+                                                Brush.verticalGradient(
+                                                    listOf(
+                                                        Color(0xFF20222A).copy(alpha = 0.92f),
+                                                        Color(0xFF13141A).copy(alpha = 0.96f)
+                                                    )
                                                 )
-                                            )
+                                            } else {
+                                                Brush.verticalGradient(
+                                                    listOf(
+                                                        Color.White.copy(alpha = 0.94f),
+                                                        Color(0xFFF4F7FC).copy(alpha = 0.96f)
+                                                    )
+                                                )
+                                            }
                                         )
                                         .border(
                                             1.dp,
-                                            Brush.verticalGradient(
-                                                listOf(
-                                                    Color.White.copy(alpha = 0.25f),
-                                                    Color.White.copy(alpha = 0.06f)
+                                            if (isDark) {
+                                                Brush.verticalGradient(
+                                                    listOf(
+                                                        Color.White.copy(alpha = 0.25f),
+                                                        Color.White.copy(alpha = 0.06f)
+                                                    )
                                                 )
-                                            ),
+                                            } else {
+                                                Brush.verticalGradient(
+                                                    listOf(
+                                                        Color.White,
+                                                        Color(0xFFCBD5E1).copy(alpha = 0.60f)
+                                                    )
+                                                )
+                                            },
                                             cardShape
                                         )
                                 }
@@ -484,7 +525,7 @@ fun AlarmScreen(
                                             ) {
                                                 Text(
                                                     text = "Skipped tomorrow",
-                                                    color = Color(0xFFFFB74D),
+                                                    color = if (isDark) Color(0xFFFFB74D) else Color(0xFFD97706),
                                                     fontSize = 11.sp,
                                                     fontWeight = FontWeight.SemiBold
                                                 )
@@ -538,12 +579,17 @@ fun AlarmScreen(
                                                 InterfaceStyle.PURE_LIQUID_GLASS -> accentColor
                                                 InterfaceStyle.MIX_LIQUID -> accentColor.copy(alpha = 0.90f)
                                             },
-                                            uncheckedThumbColor = Color(0xFFA5A5AA),
-                                            uncheckedTrackColor = when (currentStyle) {
-                                                InterfaceStyle.MINIMAL -> Color(0xFF2C2C2E)
-                                                InterfaceStyle.PURE_LIQUID_GLASS -> Color.White.copy(alpha = 0.12f)
-                                                InterfaceStyle.MIX_LIQUID -> Color.White.copy(alpha = 0.10f)
-                                            }
+                                            uncheckedThumbColor = if (isDark) Color(0xFFA5A5AA) else Color.White,
+                                            uncheckedTrackColor = if (isDark) {
+                                                when (currentStyle) {
+                                                    InterfaceStyle.MINIMAL -> Color(0xFF2C2C2E)
+                                                    InterfaceStyle.PURE_LIQUID_GLASS -> Color.White.copy(alpha = 0.12f)
+                                                    InterfaceStyle.MIX_LIQUID -> Color.White.copy(alpha = 0.10f)
+                                                }
+                                            } else {
+                                                Color(0xFFCBD5E1)
+                                            },
+                                            uncheckedBorderColor = Color.Transparent
                                         ),
                                         modifier = Modifier.testTag("alarm_switch_${alarm.id}")
                                     )

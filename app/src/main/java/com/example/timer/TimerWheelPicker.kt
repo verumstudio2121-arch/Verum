@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.sp
 import com.example.ui.theme.GlassBorder
 import com.example.ui.theme.GlassSurface
 import com.example.ui.theme.LocalAccentColor
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -208,7 +209,7 @@ private fun WheelModeDisplay(
             // Colon separator
             Text(
                 text = ":",
-                color = Color.White.copy(alpha = 0.85f),
+                color = TextPrimary.copy(alpha = 0.85f),
                 fontSize = 44.sp,
                 fontWeight = FontWeight.Light,
                 modifier = Modifier.padding(horizontal = 4.dp)
@@ -227,7 +228,7 @@ private fun WheelModeDisplay(
             // Colon separator
             Text(
                 text = ":",
-                color = Color.White.copy(alpha = 0.85f),
+                color = TextPrimary.copy(alpha = 0.85f),
                 fontSize = 44.sp,
                 fontWeight = FontWeight.Light,
                 modifier = Modifier.padding(horizontal = 4.dp)
@@ -528,7 +529,7 @@ private fun KeypadModeDisplay(
 
             Text(
                 text = ":",
-                color = Color.White.copy(alpha = 0.85f),
+                color = TextPrimary.copy(alpha = 0.85f),
                 fontSize = 44.sp,
                 fontWeight = FontWeight.Light,
                 modifier = Modifier.padding(horizontal = 8.dp)
@@ -548,7 +549,7 @@ private fun KeypadModeDisplay(
 
             Text(
                 text = ":",
-                color = Color.White.copy(alpha = 0.85f),
+                color = TextPrimary.copy(alpha = 0.85f),
                 fontSize = 44.sp,
                 fontWeight = FontWeight.Light,
                 modifier = Modifier.padding(horizontal = 8.dp)
@@ -599,7 +600,7 @@ private fun KeypadModeDisplay(
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.Backspace,
                                         contentDescription = "Backspace",
-                                        tint = Color.White.copy(alpha = 0.9f),
+                                        tint = TextPrimary.copy(alpha = 0.9f),
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
@@ -647,13 +648,20 @@ private fun KeypadUnitBox(
     onClick: () -> Unit
 ) {
     val accentColor = LocalAccentColor.current.primary
+    val isDark = LocalIsDarkTheme.current
     val borderColor by animateColorAsState(
         targetValue = if (isFocused) accentColor else Color.Transparent,
         animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
         label = "box_border"
     )
     val bgColor by animateColorAsState(
-        targetValue = if (isFocused) accentColor.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.04f),
+        targetValue = if (isFocused) {
+            accentColor.copy(alpha = 0.14f)
+        } else if (isDark) {
+            Color.White.copy(alpha = 0.04f)
+        } else {
+            Color(0xFF0F172A).copy(alpha = 0.05f)
+        },
         animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
         label = "box_bg"
     )

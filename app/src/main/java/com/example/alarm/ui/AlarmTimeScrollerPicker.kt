@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,17 +63,20 @@ import com.example.ui.theme.GlassSurfaceElevated
 import com.example.ui.theme.InterfaceStyle
 import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalInterfaceStyle
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
 import com.example.util.HapticManager
 import com.example.util.LocalHapticManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.math.sign
 
 enum class TimePickerInputMode {
     SCROLLER,
@@ -129,6 +133,7 @@ fun AlarmTimePickerScroller(
 ) {
     val haptic = LocalHapticManager.current
     val accentColor = LocalAccentColor.current.primary
+    val isDark = LocalIsDarkTheme.current
 
     var inputMode by remember { mutableStateOf(TimePickerInputMode.SCROLLER) }
     var focusedField by remember { mutableStateOf(FocusedTimeField.HOUR) }
@@ -173,7 +178,7 @@ fun AlarmTimePickerScroller(
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = subtitle,
-                    color = Color.White.copy(alpha = 0.90f),
+                    color = TextPrimary.copy(alpha = 0.90f),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -212,13 +217,13 @@ fun AlarmTimePickerScroller(
                 Icon(
                     imageVector = Icons.Default.AccessTime,
                     contentDescription = null,
-                    tint = if (isScroller) Color.White else TextSecondary,
+                    tint = if (isScroller) (if (isDark) Color.White else accentColor) else TextSecondary,
                     modifier = Modifier.size(15.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "Scroller",
-                    color = if (isScroller) Color.White else TextSecondary,
+                    color = if (isScroller) (if (isDark) Color.White else accentColor) else TextSecondary,
                     fontSize = 13.sp,
                     fontWeight = if (isScroller) FontWeight.SemiBold else FontWeight.Normal
                 )
@@ -229,7 +234,7 @@ fun AlarmTimePickerScroller(
             // Type mode button
             val isType = inputMode == TimePickerInputMode.TYPE
             val typeBg by animateColorAsState(
-                if (isType) accentColor.copy(alpha = 0.28f) else Color.Transparent,
+                if (isType) accentColor.copy(alpha = if (isDark) 0.28f else 0.16f) else Color.Transparent,
                 label = "typeBg"
             )
             val typeBorder = if (isType) accentColor.copy(alpha = 0.6f) else Color.Transparent
@@ -249,13 +254,13 @@ fun AlarmTimePickerScroller(
                 Icon(
                     imageVector = Icons.Default.Keyboard,
                     contentDescription = null,
-                    tint = if (isType) Color.White else TextSecondary,
+                    tint = if (isType) (if (isDark) Color.White else accentColor) else TextSecondary,
                     modifier = Modifier.size(15.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "Type",
-                    color = if (isType) Color.White else TextSecondary,
+                    color = if (isType) (if (isDark) Color.White else accentColor) else TextSecondary,
                     fontSize = 13.sp,
                     fontWeight = if (isType) FontWeight.SemiBold else FontWeight.Normal
                 )
@@ -276,35 +281,63 @@ fun AlarmTimePickerScroller(
                     when (currentStyle) {
                         InterfaceStyle.PURE_LIQUID_GLASS -> Modifier
                             .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color.White.copy(alpha = 0.16f),
-                                        accentColor.copy(alpha = 0.08f),
-                                        Color(0xFF10121C).copy(alpha = 0.85f)
+                                if (isDark) {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.16f),
+                                            accentColor.copy(alpha = 0.08f),
+                                            Color(0xFF10121C).copy(alpha = 0.85f)
+                                        )
                                     )
-                                )
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White,
+                                            accentColor.copy(alpha = 0.05f),
+                                            Color(0xFFF5F8FD)
+                                        )
+                                    )
+                                }
                             )
                             .border(
                                 1.2.dp,
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color.White.copy(alpha = 0.70f),
-                                        accentColor.copy(alpha = 0.40f)
+                                if (isDark) {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.70f),
+                                            accentColor.copy(alpha = 0.40f)
+                                        )
                                     )
-                                ),
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White,
+                                            accentColor.copy(alpha = 0.28f)
+                                        )
+                                    )
+                                },
                                 pickerCardShape
                             )
                         InterfaceStyle.MINIMAL -> Modifier
-                            .background(Color(0xFF1C1C1E))
-                            .border(1.dp, Color(0xFF2C2C2E), pickerCardShape)
+                            .background(if (isDark) Color(0xFF1C1C1E) else Color.White)
+                            .border(1.dp, if (isDark) Color(0xFF2C2C2E) else Color(0xFFE2E8F0), pickerCardShape)
                         InterfaceStyle.MIX_LIQUID -> Modifier
                             .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color(0xFF20222A).copy(alpha = 0.94f),
-                                        Color(0xFF14151C).copy(alpha = 0.96f)
+                                if (isDark) {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color(0xFF20222A).copy(alpha = 0.94f),
+                                            Color(0xFF14151C).copy(alpha = 0.96f)
+                                        )
                                     )
-                                )
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White,
+                                            Color(0xFFF5F8FD)
+                                        )
+                                    )
+                                }
                             )
                             .border(1.dp, GlassBorderBright, pickerCardShape)
                     }
@@ -367,6 +400,7 @@ private fun AlarmScrollerColumns(
 ) {
     val accentColor = LocalAccentColor.current.primary
     val currentStyle = LocalInterfaceStyle.current
+    val isDark = LocalIsDarkTheme.current
     val density = LocalDensity.current
 
     val hourMin = if (is24Hour) 0 else 1
@@ -393,35 +427,62 @@ private fun AlarmScrollerColumns(
                     when (currentStyle) {
                         InterfaceStyle.PURE_LIQUID_GLASS -> Modifier
                             .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color.White.copy(alpha = 0.22f),
-                                        accentColor.copy(alpha = 0.15f),
-                                        Color.White.copy(alpha = 0.05f)
+                                if (isDark) {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.22f),
+                                            accentColor.copy(alpha = 0.15f),
+                                            Color.White.copy(alpha = 0.05f)
+                                        )
                                     )
-                                )
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            accentColor.copy(alpha = 0.14f),
+                                            accentColor.copy(alpha = 0.08f)
+                                        )
+                                    )
+                                }
                             )
                             .border(
                                 1.2.dp,
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color.White.copy(alpha = 0.85f),
-                                        accentColor.copy(alpha = 0.50f)
+                                if (isDark) {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.85f),
+                                            accentColor.copy(alpha = 0.50f)
+                                        )
                                     )
-                                ),
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            accentColor.copy(alpha = 0.45f),
+                                            accentColor.copy(alpha = 0.20f)
+                                        )
+                                    )
+                                },
                                 bandShape
                             )
                         InterfaceStyle.MINIMAL -> Modifier
-                            .background(Color(0xFF2C2C2E))
-                            .border(1.dp, Color(0xFF3A3A3C), bandShape)
+                            .background(if (isDark) Color(0xFF2C2C2E) else Color(0xFFEFF4FA))
+                            .border(1.dp, if (isDark) Color(0xFF3A3A3C) else Color(0xFFD7E0EC), bandShape)
                         InterfaceStyle.MIX_LIQUID -> Modifier
                             .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color(0xFF282A34),
-                                        Color(0xFF191B22)
+                                if (isDark) {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color(0xFF282A34),
+                                            Color(0xFF191B22)
+                                        )
                                     )
-                                )
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color(0xFFF0F5FC),
+                                            Color(0xFFE6EEF9)
+                                        )
+                                    )
+                                }
                             )
                             .border(1.dp, accentColor.copy(alpha = 0.45f), bandShape)
                     }
@@ -457,7 +518,7 @@ private fun AlarmScrollerColumns(
             ) {
                 Text(
                     text = ":",
-                    color = Color.White.copy(alpha = 0.88f),
+                    color = TextPrimary.copy(alpha = 0.88f),
                     fontSize = 38.sp,
                     fontWeight = FontWeight.Light,
                     textAlign = TextAlign.Center,
@@ -502,10 +563,18 @@ private fun AlarmScrollerColumns(
         }
 
         // Top & Bottom gradient fades for authentic 3D depth and smooth entry/exit
-        val fadeColor = when (currentStyle) {
-            InterfaceStyle.MINIMAL -> Color(0xFF1C1C1E)
-            InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFF10121C).copy(alpha = 0.95f)
-            InterfaceStyle.MIX_LIQUID -> Color(0xFF14151C).copy(alpha = 0.95f)
+        val fadeColor = if (isDark) {
+            when (currentStyle) {
+                InterfaceStyle.MINIMAL -> Color(0xFF1C1C1E)
+                InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFF10121C).copy(alpha = 0.95f)
+                InterfaceStyle.MIX_LIQUID -> Color(0xFF14151C).copy(alpha = 0.95f)
+            }
+        } else {
+            when (currentStyle) {
+                InterfaceStyle.MINIMAL -> Color.White
+                InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFFF8FAFE).copy(alpha = 0.96f)
+                InterfaceStyle.MIX_LIQUID -> Color(0xFFF8FAFE).copy(alpha = 0.96f)
+            }
         }
         Box(
             modifier = Modifier
@@ -561,112 +630,169 @@ private fun TimeWheelColumn(
     val itemHeightPx = with(density) { itemHeight.toPx() }
     val rangeCount = maxValue - minValue + 1
 
-    fun wrapVal(raw: Int): Int {
-        val zeroBased = raw - minValue
-        val mod = ((zeroBased % rangeCount) + rangeCount) % rangeCount
-        return minValue + mod
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
+    val currentOnTap by rememberUpdatedState(onTap)
+
+    fun resolveVal(raw: Int): Int {
+        return if (isAmPm) {
+            raw.coerceIn(minValue, maxValue)
+        } else {
+            val zeroBased = raw - minValue
+            val mod = ((zeroBased % rangeCount) + rangeCount) % rangeCount
+            minValue + mod
+        }
     }
 
-    // Continuous pixel offset from base anchor
-    val scrollOffset = remember { Animatable(0f) }
-    var baseValue by remember(value) { mutableIntStateOf(value) }
-    var isDragging by remember { mutableStateOf(false) }
-    var lastReportedValue by remember(value) { mutableIntStateOf(value) }
+    // Continuous pixel offset from baseValue anchor.
+    // IMPORTANT: Keyed only on (minValue, maxValue), NEVER on `value`, to prevent a feedback loop
+    // where live onValueChange updates reset baseValue mid-drag while scrollOffset is non-zero.
+    val scrollOffset = remember(minValue, maxValue) { Animatable(0f) }
+    var baseValue by remember(minValue, maxValue) { mutableIntStateOf(value.coerceIn(minValue, maxValue)) }
+    var lastReportedValue by remember(minValue, maxValue) { mutableIntStateOf(value.coerceIn(minValue, maxValue)) }
+    var isUserInteracting by remember(minValue, maxValue) { mutableStateOf(false) }
+    var settleJob by remember(minValue, maxValue) { mutableStateOf<Job?>(null) }
 
+    // Sync only when external state changes while user is not dragging/settling (e.g. from Type mode)
     LaunchedEffect(value) {
-        if (!isDragging && value != baseValue) {
-            baseValue = value
+        val coerced = value.coerceIn(minValue, maxValue)
+        if (!isUserInteracting && coerced != lastReportedValue) {
+            settleJob?.cancel()
+            baseValue = coerced
+            lastReportedValue = coerced
             scrollOffset.snapTo(0f)
-            lastReportedValue = value
         }
     }
 
     val currentOffset = scrollOffset.value
-    // Dragging DOWN (positive offset) means smaller/previous numbers come down to center
+    // Dragging DOWN (positive offset) brings smaller/previous numbers into center;
+    // Dragging UP (negative offset) advances to larger/next numbers.
     val totalItemsShifted = -currentOffset / itemHeightPx
-    val centerStep = totalItemsShifted.roundToInt()
-    val currentCenterVal = wrapVal(baseValue + centerStep)
+    val rawCenterStep = totalItemsShifted.roundToInt()
+    val centerStep = if (isAmPm) {
+        rawCenterStep.coerceIn(minValue - baseValue, maxValue - baseValue)
+    } else {
+        rawCenterStep
+    }
+    val currentCenterVal = resolveVal(baseValue + centerStep)
 
     // Sub-item pixel offset from the current integer center
     val pixelOffsetFromCenter = currentOffset + (centerStep * itemHeightPx)
 
-    // Trigger crisp haptic tick whenever a number passes the center threshold
+    // Trigger crisp haptic tick and live update whenever a number crosses the center threshold
     LaunchedEffect(currentCenterVal) {
         if (currentCenterVal != lastReportedValue) {
             lastReportedValue = currentCenterVal
             haptic.sliderTick()
-            onValueChange(currentCenterVal)
+            currentOnValueChange(currentCenterVal)
         }
     }
 
     Box(
         modifier = modifier
             .height(viewportHeight)
-            .pointerInput(rangeCount) {
+            .pointerInput(minValue, maxValue, isAmPm, itemHeightPx) {
                 var velocityTracker = VelocityTracker()
+                var activeDragOffset = 0f
+
                 detectVerticalDragGestures(
                     onDragStart = {
-                        isDragging = true
+                        // Cancel any active fling/snap animation and continue seamlessly from current offset
+                        settleJob?.cancel()
+                        isUserInteracting = true
+                        activeDragOffset = scrollOffset.value
                         velocityTracker = VelocityTracker()
-                    },
-                    onDragEnd = {
-                        val velocityY = velocityTracker.calculateVelocity().y
-                        isDragging = false
-                        coroutineScope.launch {
-                            // Authentic inertia / fling momentum
-                            val flingPixels = if (abs(velocityY) > 300f) {
-                                (velocityY * 0.22f).coerceIn(-itemHeightPx * 12f, itemHeightPx * 12f)
-                            } else {
-                                0f
-                            }
-                            val projectedOffset = scrollOffset.value + flingPixels
-                            val projectedStep = (-projectedOffset / itemHeightPx).roundToInt()
-                            val finalSnapTarget = -projectedStep * itemHeightPx
-
-                            scrollOffset.animateTo(
-                                targetValue = finalSnapTarget,
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                                )
-                            )
-
-                            val finalVal = wrapVal(baseValue + projectedStep)
-                            baseValue = finalVal
-                            scrollOffset.snapTo(0f)
-                            onValueChange(finalVal)
-                            haptic.sliderSnap()
-                        }
-                    },
-                    onDragCancel = {
-                        isDragging = false
-                        coroutineScope.launch {
-                            val currentStepInt = (-scrollOffset.value / itemHeightPx).roundToInt()
-                            val finalSnapTarget = -currentStepInt * itemHeightPx
-                            scrollOffset.animateTo(
-                                targetValue = finalSnapTarget,
-                                animationSpec = spring(dampingRatio = 0.8f)
-                            )
-                            val finalVal = wrapVal(baseValue + currentStepInt)
-                            baseValue = finalVal
-                            scrollOffset.snapTo(0f)
-                            onValueChange(finalVal)
-                        }
                     },
                     onVerticalDrag = { change, dragAmount ->
                         change.consume()
                         velocityTracker.addPosition(change.uptimeMillis, change.position)
+                        var nextOffset = activeDragOffset + dragAmount
+                        if (isAmPm) {
+                            val minAllowed = -(maxValue - baseValue) * itemHeightPx - (itemHeightPx * 0.25f)
+                            val maxAllowed = (baseValue - minValue) * itemHeightPx + (itemHeightPx * 0.25f)
+                            nextOffset = nextOffset.coerceIn(minAllowed, maxAllowed)
+                        }
+                        activeDragOffset = nextOffset
+                        val snapTarget = nextOffset
                         coroutineScope.launch {
-                            scrollOffset.snapTo(scrollOffset.value + dragAmount)
+                            scrollOffset.snapTo(snapTarget)
+                        }
+                    },
+                    onDragEnd = {
+                        val velocityY = velocityTracker.calculateVelocity().y
+                        val endOffset = activeDragOffset
+                        settleJob?.cancel()
+                        settleJob = coroutineScope.launch {
+                            val projectedStep = if (isAmPm) {
+                                val flickBias = if (abs(velocityY) > 250f) {
+                                    sign(velocityY) * itemHeightPx * 0.6f
+                                } else {
+                                    0f
+                                }
+                                val rawStep = (-(endOffset + flickBias) / itemHeightPx).roundToInt()
+                                rawStep.coerceIn(minValue - baseValue, maxValue - baseValue)
+                            } else {
+                                // Only add inertia on deliberate flicks (> 400 px/s);
+                                // small finger slides stop cleanly right on the item under the finger.
+                                val flingPixels = if (abs(velocityY) > 400f) {
+                                    val excess = velocityY - (sign(velocityY) * 400f)
+                                    (excess * 0.14f).coerceIn(-itemHeightPx * 6f, itemHeightPx * 6f)
+                                } else {
+                                    0f
+                                }
+                                (-(endOffset + flingPixels) / itemHeightPx).roundToInt()
+                            }
+
+                            val finalSnapTarget = -projectedStep * itemHeightPx
+                            scrollOffset.animateTo(
+                                targetValue = finalSnapTarget,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                )
+                            )
+
+                            val finalVal = resolveVal(baseValue + projectedStep)
+                            baseValue = finalVal
+                            lastReportedValue = finalVal
+                            scrollOffset.snapTo(0f)
+                            currentOnValueChange(finalVal)
+                            haptic.sliderSnap()
+                            isUserInteracting = false
+                        }
+                    },
+                    onDragCancel = {
+                        val endOffset = activeDragOffset
+                        settleJob?.cancel()
+                        settleJob = coroutineScope.launch {
+                            val currentStepInt = (-endOffset / itemHeightPx).roundToInt().let { step ->
+                                if (isAmPm) step.coerceIn(minValue - baseValue, maxValue - baseValue) else step
+                            }
+                            val finalSnapTarget = -currentStepInt * itemHeightPx
+                            scrollOffset.animateTo(
+                                targetValue = finalSnapTarget,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                )
+                            )
+                            val finalVal = resolveVal(baseValue + currentStepInt)
+                            baseValue = finalVal
+                            lastReportedValue = finalVal
+                            scrollOffset.snapTo(0f)
+                            currentOnValueChange(finalVal)
+                            isUserInteracting = false
                         }
                     }
                 )
             },
         contentAlignment = Alignment.Center
     ) {
-        // Render 5 items (-2, -1, 0, +1, +2) with continuous smooth 3D cylindrical roll
+        // Render visible items (-2, -1, 0, +1, +2) with smooth 3D cylindrical perspective
         for (k in -2..2) {
-            val itemVal = wrapVal(currentCenterVal + k)
+            val rawCandidate = currentCenterVal + k
+            if (isAmPm && rawCandidate !in minValue..maxValue) continue
+
+            val itemVal = resolveVal(rawCandidate)
             val yPos = (k * itemHeightPx) + pixelOffsetFromCenter
             val distFraction = (yPos / (itemHeightPx * 2.2f)).coerceIn(-1.2f, 1.2f)
             val absDist = abs(distFraction)
@@ -695,29 +821,34 @@ private fun TimeWheelColumn(
                         if (!isClosest) {
                             // Tapping an adjacent item rolls it smoothly to the center
                             haptic.buttonClick()
-                            coroutineScope.launch {
-                                val targetDelta = -k * itemHeightPx
+                            settleJob?.cancel()
+                            settleJob = coroutineScope.launch {
+                                isUserInteracting = true
+                                val targetStep = centerStep + k
+                                val targetOffset = -targetStep * itemHeightPx
                                 scrollOffset.animateTo(
-                                    targetValue = scrollOffset.value + targetDelta,
+                                    targetValue = targetOffset,
                                     animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessMediumLow
+                                        dampingRatio = Spring.DampingRatioNoBouncy,
+                                        stiffness = Spring.StiffnessMedium
                                     )
                                 )
-                                val newCenterVal = wrapVal(baseValue + centerStep + k)
+                                val newCenterVal = resolveVal(baseValue + targetStep)
                                 baseValue = newCenterVal
+                                lastReportedValue = newCenterVal
                                 scrollOffset.snapTo(0f)
-                                onValueChange(newCenterVal)
+                                currentOnValueChange(newCenterVal)
+                                isUserInteracting = false
                             }
-                        } else if (onTap != null) {
-                            onTap()
+                        } else {
+                            currentOnTap?.invoke()
                         }
                     },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = formatValue(itemVal),
-                    color = if (isClosest) Color.White else TextSecondary,
+                    color = if (isClosest) TextPrimary else TextSecondary,
                     fontSize = if (isAmPm) {
                         if (isClosest) 23.sp else 19.sp
                     } else {
@@ -797,7 +928,7 @@ private fun AlarmTypeInputKeypad(
             ) {
                 Text(
                     text = if (hourBuffer.isNotEmpty()) hourBuffer else String.format(if (is24Hour) "%02d" else "%d", displayHour),
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 46.sp,
                     fontWeight = FontWeight.Medium,
                     fontFamily = FontFamily.SansSerif
@@ -806,7 +937,7 @@ private fun AlarmTypeInputKeypad(
 
             Text(
                 text = ":",
-                color = Color.White.copy(alpha = 0.85f),
+                color = TextPrimary.copy(alpha = 0.85f),
                 fontSize = 44.sp,
                 fontWeight = FontWeight.Light,
                 modifier = Modifier.padding(horizontal = 10.dp)
@@ -832,7 +963,7 @@ private fun AlarmTypeInputKeypad(
             ) {
                 Text(
                     text = if (minuteBuffer.isNotEmpty()) minuteBuffer.padStart(2, '0') else String.format("%02d", minute),
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 46.sp,
                     fontWeight = FontWeight.Medium,
                     fontFamily = FontFamily.SansSerif
@@ -856,7 +987,7 @@ private fun AlarmTypeInputKeypad(
                 ) {
                     Text(
                         text = if (isPm) "PM" else "AM",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -1013,7 +1144,7 @@ private fun KeypadButton(
     ) {
         Text(
             text = text,
-            color = Color.White,
+            color = TextPrimary,
             fontSize = 22.sp,
             fontWeight = FontWeight.Medium
         )

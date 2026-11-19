@@ -46,6 +46,7 @@ import com.example.ui.theme.GlassSurfaceElevated
 import com.example.ui.theme.InterfaceStyle
 import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalInterfaceStyle
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -71,24 +72,27 @@ fun SmartAlarmTurnOffBottomSheet(
     val haptic = LocalHapticManager.current
     val accentColor = LocalAccentColor.current.primary
     val currentStyle = LocalInterfaceStyle.current
+    val isDark = LocalIsDarkTheme.current
 
-    val containerBg = when (currentStyle) {
-        InterfaceStyle.MINIMAL -> Color(0xFF141416)
-        InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFF090B14).copy(alpha = 0.94f)
-        InterfaceStyle.MIX_LIQUID -> Color(0xFF12131A).copy(alpha = 0.96f)
-    }
-
-    val containerBorder = when (currentStyle) {
-        InterfaceStyle.MINIMAL -> Color(0xFF2C2C2E)
-        InterfaceStyle.PURE_LIQUID_GLASS -> Color.White.copy(alpha = 0.28f)
-        InterfaceStyle.MIX_LIQUID -> GlassBorderBright
+    val containerBg = if (isDark) {
+        when (currentStyle) {
+            InterfaceStyle.MINIMAL -> Color(0xFF141416)
+            InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFF090B14).copy(alpha = 0.94f)
+            InterfaceStyle.MIX_LIQUID -> Color(0xFF12131A).copy(alpha = 0.96f)
+        }
+    } else {
+        when (currentStyle) {
+            InterfaceStyle.MINIMAL -> Color(0xFFF4F7FB)
+            InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFFF1F5FC).copy(alpha = 0.96f)
+            InterfaceStyle.MIX_LIQUID -> Color(0xFFF5F8FD).copy(alpha = 0.97f)
+        }
     }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = containerBg,
-        contentColor = Color.White,
+        contentColor = TextPrimary,
         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
         dragHandle = {
             Box(
@@ -97,7 +101,7 @@ fun SmartAlarmTurnOffBottomSheet(
                     .width(42.dp)
                     .height(4.5.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.35f))
+                    .background(TextTertiary.copy(alpha = 0.45f))
             )
         }
     ) {
@@ -175,15 +179,25 @@ fun SmartAlarmTurnOffBottomSheet(
                     .height(52.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .background(
-                        when (currentStyle) {
-                            InterfaceStyle.MINIMAL -> Color(0xFF1E1E22)
-                            InterfaceStyle.PURE_LIQUID_GLASS -> Color.White.copy(alpha = 0.08f)
-                            InterfaceStyle.MIX_LIQUID -> GlassSurface
+                        if (isDark) {
+                            when (currentStyle) {
+                                InterfaceStyle.MINIMAL -> Color(0xFF1E1E22)
+                                InterfaceStyle.PURE_LIQUID_GLASS -> Color.White.copy(alpha = 0.08f)
+                                InterfaceStyle.MIX_LIQUID -> GlassSurface
+                            }
+                        } else {
+                            when (currentStyle) {
+                                InterfaceStyle.MINIMAL -> Color(0xFFE7ECF3)
+                                InterfaceStyle.PURE_LIQUID_GLASS -> Color.White.copy(alpha = 0.85f)
+                                InterfaceStyle.MIX_LIQUID -> GlassSurface
+                            }
                         }
                     )
                     .border(
                         1.dp,
-                        if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassBorder,
+                        if (currentStyle == InterfaceStyle.MINIMAL) {
+                            if (isDark) Color(0xFF2C2C2E) else Color(0xFFCBD5E1)
+                        } else GlassBorder,
                         RoundedCornerShape(20.dp)
                     )
                     .clickable {
@@ -217,6 +231,7 @@ private fun SmartOptionCard(
     modifier: Modifier = Modifier
 ) {
     val cardShape = RoundedCornerShape(22.dp)
+    val isDark = LocalIsDarkTheme.current
 
     Box(
         modifier = modifier
@@ -226,37 +241,65 @@ private fun SmartOptionCard(
                 when (currentStyle) {
                     InterfaceStyle.PURE_LIQUID_GLASS -> Modifier
                         .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.White.copy(alpha = 0.16f),
-                                    accentColor.copy(alpha = 0.08f),
-                                    Color(0xFF10121C).copy(alpha = 0.85f)
+                            if (isDark) {
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.16f),
+                                        accentColor.copy(alpha = 0.08f),
+                                        Color(0xFF10121C).copy(alpha = 0.85f)
+                                    )
                                 )
-                            )
+                            } else {
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.White,
+                                        accentColor.copy(alpha = 0.06f),
+                                        Color(0xFFF6F9FE)
+                                    )
+                                )
+                            }
                         )
                         .border(
                             1.2.dp,
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.White.copy(alpha = 0.60f),
-                                    accentColor.copy(alpha = 0.35f)
+                            if (isDark) {
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.60f),
+                                        accentColor.copy(alpha = 0.35f)
+                                    )
                                 )
-                            ),
+                            } else {
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.White,
+                                        accentColor.copy(alpha = 0.25f)
+                                    )
+                                )
+                            },
                             cardShape
                         )
 
                     InterfaceStyle.MINIMAL -> Modifier
-                        .background(Color(0xFF1C1C1E))
-                        .border(1.dp, Color(0xFF2C2C2E), cardShape)
+                        .background(if (isDark) Color(0xFF1C1C1E) else Color.White)
+                        .border(1.dp, if (isDark) Color(0xFF2C2C2E) else Color(0xFFE2E8F0), cardShape)
 
                     InterfaceStyle.MIX_LIQUID -> Modifier
                         .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color(0xFF22242E).copy(alpha = 0.94f),
-                                    Color(0xFF15161E).copy(alpha = 0.96f)
+                            if (isDark) {
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color(0xFF22242E).copy(alpha = 0.94f),
+                                        Color(0xFF15161E).copy(alpha = 0.96f)
+                                    )
                                 )
-                            )
+                            } else {
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.White,
+                                        Color(0xFFF5F8FD)
+                                    )
+                                )
+                            }
                         )
                         .border(1.dp, GlassBorderBright, cardShape)
                 }
@@ -280,7 +323,7 @@ private fun SmartOptionCard(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (currentStyle == InterfaceStyle.MINIMAL && accentColor == Color(0xFFA5A5AA)) Color.White else accentColor,
+                    tint = if (accentColor == Color(0xFFA5A5AA)) TextPrimary else accentColor,
                     modifier = Modifier.size(24.dp)
                 )
             }

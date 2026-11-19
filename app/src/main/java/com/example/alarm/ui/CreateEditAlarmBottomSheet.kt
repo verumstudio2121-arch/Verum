@@ -82,6 +82,7 @@ import com.example.ui.theme.LiquidGlassButton
 import com.example.ui.theme.LiquidGlassCard
 import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalInterfaceStyle
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -107,10 +108,14 @@ fun CreateEditAlarmBottomSheet(
     val initHour = initialAlarm?.hour ?: 7
     val initMinute = initialAlarm?.minute ?: 0
     val initIsPm = initHour >= 12
-    val initDisplayHour = when {
-        initHour == 0 -> 12
-        initHour > 12 -> initHour - 12
-        else -> initHour
+    val initDisplayHour = if (is24Hour) {
+        initHour
+    } else {
+        when {
+            initHour == 0 -> 12
+            initHour > 12 -> initHour - 12
+            else -> initHour
+        }
     }
 
     var displayHour by remember { mutableIntStateOf(initDisplayHour) }
@@ -124,6 +129,43 @@ fun CreateEditAlarmBottomSheet(
     var snoozeEnabled by remember { mutableStateOf(initialAlarm?.snoozeEnabled ?: true) }
     var backgroundType by remember { mutableStateOf(initialAlarm?.backgroundType ?: "DEFAULT") }
     var backgroundMediaUri by remember { mutableStateOf(initialAlarm?.backgroundMediaUri) }
+
+    fun buildFinalAlarm(): AlarmModel {
+        val actualHour = if (is24Hour) {
+            displayHour.coerceIn(0, 23)
+        } else {
+            when {
+                !isPm && displayHour == 12 -> 0
+                !isPm -> displayHour
+                isPm && displayHour == 12 -> 12
+                else -> displayHour + 12
+            }
+        }
+        return initialAlarm?.copy(
+            hour = actualHour,
+            minute = selectedMinute,
+            label = label.trim().ifEmpty { "Alarm" },
+            repeatType = repeatType,
+            customDays = customDays,
+            soundName = selectedSound,
+            vibrate = vibrate,
+            snoozeEnabled = snoozeEnabled,
+            backgroundType = backgroundType,
+            backgroundMediaUri = backgroundMediaUri
+        ) ?: AlarmModel(
+            hour = actualHour,
+            minute = selectedMinute,
+            label = label.trim().ifEmpty { "Alarm" },
+            isEnabled = true,
+            repeatType = repeatType,
+            customDays = customDays,
+            soundName = selectedSound,
+            vibrate = vibrate,
+            snoozeEnabled = snoozeEnabled,
+            backgroundType = backgroundType,
+            backgroundMediaUri = backgroundMediaUri
+        )
+    }
 
     var isPreviewPlaying by remember { mutableStateOf(false) }
 
@@ -207,6 +249,13 @@ fun CreateEditAlarmBottomSheet(
     }
 
     val currentStyle = LocalInterfaceStyle.current
+    val isDark = LocalIsDarkTheme.current
+    val minimalSurface = if (isDark) Color(0xFF1C1C1E) else Color.White
+    val minimalChipBg = if (isDark) Color(0xFF2C2C2E) else Color(0xFFEFF3F8)
+    val minimalBorder = if (isDark) Color(0xFF2C2C2E) else Color(0xFFE2E8F0)
+    val minimalChipBorder = if (isDark) Color(0xFF3A3A3C) else Color(0xFFCBD5E1)
+    val dividerColor = if (isDark) Color.White.copy(alpha = 0.08f) else Color(0xFF0F172A).copy(alpha = 0.08f)
+    val subtlePillBg = if (isDark) Color.White.copy(alpha = 0.06f) else Color(0xFF0F172A).copy(alpha = 0.05f)
 
     ModalBottomSheet(
         onDismissRequest = {
@@ -214,12 +263,20 @@ fun CreateEditAlarmBottomSheet(
             onDismiss()
         },
         sheetState = sheetState,
-        containerColor = when (currentStyle) {
-            InterfaceStyle.MINIMAL -> Color(0xFF121214)
-            InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFF090B14)
-            InterfaceStyle.MIX_LIQUID -> Color(0xFF101117)
+        containerColor = if (isDark) {
+            when (currentStyle) {
+                InterfaceStyle.MINIMAL -> Color(0xFF121214)
+                InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFF090B14)
+                InterfaceStyle.MIX_LIQUID -> Color(0xFF101117)
+            }
+        } else {
+            when (currentStyle) {
+                InterfaceStyle.MINIMAL -> Color(0xFFF3F6FA)
+                InterfaceStyle.PURE_LIQUID_GLASS -> Color(0xFFF1F5FB)
+                InterfaceStyle.MIX_LIQUID -> Color(0xFFF4F7FC)
+            }
         },
-        contentColor = Color.White,
+        contentColor = TextPrimary,
         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
         dragHandle = {
             Box(
@@ -228,7 +285,7 @@ fun CreateEditAlarmBottomSheet(
                     .width(44.dp)
                     .height(4.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.25f))
+                    .background(TextTertiary.copy(alpha = 0.45f))
             )
         }
     ) {
@@ -280,39 +337,11 @@ fun CreateEditAlarmBottomSheet(
                         .clip(RoundedCornerShape(12.dp))
                         .clickable {
                             SoundPlayer.stopPreview()
-                            val actualHour = when {
-                                !isPm && displayHour == 12 -> 0
-                                !isPm -> displayHour
-                                isPm && displayHour == 12 -> 12
-                                else -> displayHour + 12
-                            }
-
-                            val finalAlarm = initialAlarm?.copy(
-                                hour = actualHour,
-                                minute = selectedMinute,
-                                label = label.trim().ifEmpty { "Alarm" },
-                                repeatType = repeatType,
-                                customDays = customDays,
-                                soundName = selectedSound,
-                                vibrate = vibrate,
-                                snoozeEnabled = snoozeEnabled
-                            ) ?: AlarmModel(
-                                hour = actualHour,
-                                minute = selectedMinute,
-                                label = label.trim().ifEmpty { "Alarm" },
-                                isEnabled = true,
-                                repeatType = repeatType,
-                                customDays = customDays,
-                                soundName = selectedSound,
-                                vibrate = vibrate,
-                                snoozeEnabled = snoozeEnabled
-                            )
-
                             haptic.confirm()
-                            onSave(finalAlarm)
-                            onDismiss()
+                            onSave(buildFinalAlarm())
                         }
                         .padding(horizontal = 8.dp, vertical = 6.dp)
+                        .testTag("alarm_done_button")
                 )
             }
 
@@ -347,14 +376,14 @@ fun CreateEditAlarmBottomSheet(
 
                     val optBg = when {
                         isSelected && currentStyle == InterfaceStyle.MINIMAL -> Color(0xFF1685F8)
-                        isSelected -> accentColor.copy(alpha = 0.35f)
-                        currentStyle == InterfaceStyle.MINIMAL -> Color(0xFF2C2C2E)
+                        isSelected -> accentColor.copy(alpha = if (isDark) 0.35f else 0.16f)
+                        currentStyle == InterfaceStyle.MINIMAL -> minimalChipBg
                         else -> GlassSurface
                     }
                     val optBorder = when {
                         isSelected && currentStyle == InterfaceStyle.MINIMAL -> Color.Transparent
                         isSelected -> accentColor
-                        currentStyle == InterfaceStyle.MINIMAL -> Color(0xFF3A3A3C)
+                        currentStyle == InterfaceStyle.MINIMAL -> minimalChipBorder
                         else -> GlassBorder
                     }
 
@@ -372,7 +401,12 @@ fun CreateEditAlarmBottomSheet(
                     ) {
                         Text(
                             text = opt,
-                            color = if (isSelected) Color.White else TextSecondary,
+                            color = when {
+                                isSelected && currentStyle == InterfaceStyle.MINIMAL -> Color.White
+                                isSelected && !isDark -> accentColor
+                                isSelected -> Color.White
+                                else -> TextSecondary
+                            },
                             fontSize = 13.sp,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                         )
@@ -401,14 +435,14 @@ fun CreateEditAlarmBottomSheet(
                         val isDaySelected = customDays.contains(dayNum)
                         val dayBg = when {
                             isDaySelected && currentStyle == InterfaceStyle.MINIMAL -> Color(0xFF1685F8)
-                            isDaySelected -> accentColor.copy(alpha = 0.45f)
-                            currentStyle == InterfaceStyle.MINIMAL -> Color(0xFF2C2C2E)
+                            isDaySelected -> accentColor.copy(alpha = if (isDark) 0.45f else 0.20f)
+                            currentStyle == InterfaceStyle.MINIMAL -> minimalChipBg
                             else -> GlassSurface
                         }
                         val dayBorder = when {
                             isDaySelected && currentStyle == InterfaceStyle.MINIMAL -> Color.Transparent
                             isDaySelected -> accentColor
-                            currentStyle == InterfaceStyle.MINIMAL -> Color(0xFF3A3A3C)
+                            currentStyle == InterfaceStyle.MINIMAL -> minimalChipBorder
                             else -> GlassBorder
                         }
 
@@ -426,7 +460,12 @@ fun CreateEditAlarmBottomSheet(
                         ) {
                             Text(
                                 text = labelLetter,
-                                color = if (isDaySelected) Color.White else TextSecondary,
+                                color = when {
+                                    isDaySelected && currentStyle == InterfaceStyle.MINIMAL -> Color.White
+                                    isDaySelected && !isDark -> accentColor
+                                    isDaySelected -> Color.White
+                                    else -> TextSecondary
+                                },
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -446,35 +485,63 @@ fun CreateEditAlarmBottomSheet(
                     when (currentStyle) {
                         InterfaceStyle.PURE_LIQUID_GLASS -> Modifier
                             .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color.White.copy(alpha = 0.14f),
-                                        accentColor.copy(alpha = 0.08f),
-                                        Color(0xFF10121C).copy(alpha = 0.85f)
+                                if (isDark) {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.14f),
+                                            accentColor.copy(alpha = 0.08f),
+                                            Color(0xFF10121C).copy(alpha = 0.85f)
+                                        )
                                     )
-                                )
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White,
+                                            accentColor.copy(alpha = 0.05f),
+                                            Color(0xFFF6F9FD)
+                                        )
+                                    )
+                                }
                             )
                             .border(
                                 1.2.dp,
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color.White.copy(alpha = 0.65f),
-                                        accentColor.copy(alpha = 0.40f)
+                                if (isDark) {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.65f),
+                                            accentColor.copy(alpha = 0.40f)
+                                        )
                                     )
-                                ),
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White,
+                                            accentColor.copy(alpha = 0.25f)
+                                        )
+                                    )
+                                },
                                 settingsCardShape
                             )
                         InterfaceStyle.MINIMAL -> Modifier
-                            .background(Color(0xFF1C1C1E))
-                            .border(1.dp, Color(0xFF2C2C2E), settingsCardShape)
+                            .background(minimalSurface)
+                            .border(1.dp, minimalBorder, settingsCardShape)
                         InterfaceStyle.MIX_LIQUID -> Modifier
                             .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color(0xFF20222A).copy(alpha = 0.94f),
-                                        Color(0xFF14151C).copy(alpha = 0.96f)
+                                if (isDark) {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color(0xFF20222A).copy(alpha = 0.94f),
+                                            Color(0xFF14151C).copy(alpha = 0.96f)
+                                        )
                                     )
-                                )
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            Color.White,
+                                            Color(0xFFF7FAFE)
+                                        )
+                                    )
+                                }
                             )
                             .border(1.dp, GlassBorder, settingsCardShape)
                     }
@@ -493,11 +560,11 @@ fun CreateEditAlarmBottomSheet(
                         placeholder = { Text("Alarm Label", color = TextTertiary) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1685F8) else accentColor,
-                            unfocusedBorderColor = if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassBorder,
+                            unfocusedBorderColor = if (currentStyle == InterfaceStyle.MINIMAL) minimalBorder else GlassBorder,
                             focusedTextColor = TextPrimary,
                             unfocusedTextColor = TextPrimary,
-                            focusedContainerColor = if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassSurface,
-                            unfocusedContainerColor = if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassSurface
+                            focusedContainerColor = if (currentStyle == InterfaceStyle.MINIMAL) minimalChipBg else GlassSurface,
+                            unfocusedContainerColor = if (currentStyle == InterfaceStyle.MINIMAL) minimalChipBg else GlassSurface
                         ),
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier
@@ -512,7 +579,7 @@ fun CreateEditAlarmBottomSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(dividerColor)
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -543,8 +610,8 @@ fun CreateEditAlarmBottomSheet(
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .background(if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else GlassSurface)
-                                    .border(1.dp, if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF3A3A3C) else GlassBorder, CircleShape)
+                                    .background(if (currentStyle == InterfaceStyle.MINIMAL) minimalChipBg else GlassSurface)
+                                    .border(1.dp, if (currentStyle == InterfaceStyle.MINIMAL) minimalChipBorder else GlassBorder, CircleShape)
                                     .clickable {
                                         haptic.buttonClick()
                                         if (isPreviewPlaying) {
@@ -623,8 +690,8 @@ fun CreateEditAlarmBottomSheet(
                                     .clip(CircleShape)
                                     .background(
                                         if (isSoundSelected) {
-                                            if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1685F8) else accentColor.copy(alpha = 0.35f)
-                                        } else Color.White.copy(alpha = 0.06f)
+                                            if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1685F8) else accentColor.copy(alpha = if (isDark) 0.35f else 0.16f)
+                                        } else subtlePillBg
                                     )
                                     .border(
                                         1.dp,
@@ -641,7 +708,12 @@ fun CreateEditAlarmBottomSheet(
                             ) {
                                 Text(
                                     text = customTone.name,
-                                    color = if (isSoundSelected) Color.White else TextSecondary,
+                                    color = when {
+                                        isSoundSelected && currentStyle == InterfaceStyle.MINIMAL -> Color.White
+                                        isSoundSelected && !isDark -> accentColor
+                                        isSoundSelected -> Color.White
+                                        else -> TextSecondary
+                                    },
                                     fontSize = 12.sp,
                                     fontWeight = if (isSoundSelected) FontWeight.Bold else FontWeight.Normal
                                 )
@@ -655,8 +727,8 @@ fun CreateEditAlarmBottomSheet(
                                     .clip(CircleShape)
                                     .background(
                                         if (isSoundSelected) {
-                                            if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1685F8) else accentColor.copy(alpha = 0.35f)
-                                        } else Color.White.copy(alpha = 0.06f)
+                                            if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1685F8) else accentColor.copy(alpha = if (isDark) 0.35f else 0.16f)
+                                        } else subtlePillBg
                                     )
                                     .border(
                                         1.dp,
@@ -673,7 +745,12 @@ fun CreateEditAlarmBottomSheet(
                             ) {
                                 Text(
                                     text = sound,
-                                    color = if (isSoundSelected) Color.White else TextSecondary,
+                                    color = when {
+                                        isSoundSelected && currentStyle == InterfaceStyle.MINIMAL -> Color.White
+                                        isSoundSelected && !isDark -> accentColor
+                                        isSoundSelected -> Color.White
+                                        else -> TextSecondary
+                                    },
                                     fontSize = 12.sp,
                                     fontWeight = if (isSoundSelected) FontWeight.SemiBold else FontWeight.Normal
                                 )
@@ -688,7 +765,7 @@ fun CreateEditAlarmBottomSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(dividerColor)
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -709,8 +786,11 @@ fun CreateEditAlarmBottomSheet(
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1685F8) else accentColor,
-                                uncheckedThumbColor = TextTertiary,
-                                uncheckedTrackColor = if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else Color.White.copy(alpha = 0.12f)
+                                uncheckedThumbColor = if (isDark) TextTertiary else Color.White,
+                                uncheckedTrackColor = if (isDark) {
+                                    if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else Color.White.copy(alpha = 0.12f)
+                                } else Color(0xFFCBD5E1),
+                                uncheckedBorderColor = Color.Transparent
                             )
                         )
                     }
@@ -722,7 +802,7 @@ fun CreateEditAlarmBottomSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(dividerColor)
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -743,8 +823,11 @@ fun CreateEditAlarmBottomSheet(
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,
                                 checkedTrackColor = if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF1685F8) else accentColor,
-                                uncheckedThumbColor = TextTertiary,
-                                uncheckedTrackColor = if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else Color.White.copy(alpha = 0.12f)
+                                uncheckedThumbColor = if (isDark) TextTertiary else Color.White,
+                                uncheckedTrackColor = if (isDark) {
+                                    if (currentStyle == InterfaceStyle.MINIMAL) Color(0xFF2C2C2E) else Color.White.copy(alpha = 0.12f)
+                                } else Color(0xFFCBD5E1),
+                                uncheckedBorderColor = Color.Transparent
                             )
                         )
                     }
@@ -755,7 +838,7 @@ fun CreateEditAlarmBottomSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(dividerColor)
                     )
                     Spacer(modifier = Modifier.height(14.dp))
 
@@ -798,8 +881,8 @@ fun CreateEditAlarmBottomSheet(
                                     .weight(1f)
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(
-                                        if (backgroundType == "DEFAULT") accentColor.copy(alpha = 0.20f)
-                                        else Color.White.copy(alpha = 0.05f)
+                                        if (backgroundType == "DEFAULT") accentColor.copy(alpha = if (isDark) 0.20f else 0.14f)
+                                        else subtlePillBg
                                     )
                                     .border(
                                         1.dp,
@@ -825,7 +908,7 @@ fun CreateEditAlarmBottomSheet(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = "Default",
-                                        color = if (backgroundType == "DEFAULT") Color.White else TextSecondary,
+                                        color = if (backgroundType == "DEFAULT") TextPrimary else TextSecondary,
                                         fontSize = 12.sp,
                                         fontWeight = if (backgroundType == "DEFAULT") FontWeight.Bold else FontWeight.Normal
                                     )
@@ -838,8 +921,8 @@ fun CreateEditAlarmBottomSheet(
                                     .weight(1f)
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(
-                                        if (backgroundType == "PHOTO") accentColor.copy(alpha = 0.20f)
-                                        else Color.White.copy(alpha = 0.05f)
+                                        if (backgroundType == "PHOTO") accentColor.copy(alpha = if (isDark) 0.20f else 0.14f)
+                                        else subtlePillBg
                                     )
                                     .border(
                                         1.dp,
@@ -866,7 +949,7 @@ fun CreateEditAlarmBottomSheet(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = "Choose Photo",
-                                        color = if (backgroundType == "PHOTO") Color.White else TextSecondary,
+                                        color = if (backgroundType == "PHOTO") TextPrimary else TextSecondary,
                                         fontSize = 12.sp,
                                         fontWeight = if (backgroundType == "PHOTO") FontWeight.Bold else FontWeight.Normal
                                     )
@@ -879,8 +962,8 @@ fun CreateEditAlarmBottomSheet(
                                     .weight(1f)
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(
-                                        if (backgroundType == "VIDEO") accentColor.copy(alpha = 0.20f)
-                                        else Color.White.copy(alpha = 0.05f)
+                                        if (backgroundType == "VIDEO") accentColor.copy(alpha = if (isDark) 0.20f else 0.14f)
+                                        else subtlePillBg
                                     )
                                     .border(
                                         1.dp,
@@ -907,7 +990,7 @@ fun CreateEditAlarmBottomSheet(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = "Choose Video",
-                                        color = if (backgroundType == "VIDEO") Color.White else TextSecondary,
+                                        color = if (backgroundType == "VIDEO") TextPrimary else TextSecondary,
                                         fontSize = 12.sp,
                                         fontWeight = if (backgroundType == "VIDEO") FontWeight.Bold else FontWeight.Normal
                                     )
@@ -1047,46 +1130,17 @@ fun CreateEditAlarmBottomSheet(
                 }
 
                 LiquidGlassButton(
-                    modifier = Modifier.weight(1f).height(54.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(54.dp)
+                        .testTag("alarm_save_button"),
                     shape = RoundedCornerShape(22.dp),
-                    backgroundColor = accentColor.copy(alpha = 0.35f),
+                    backgroundColor = if (isDark) accentColor.copy(alpha = 0.35f) else accentColor,
                     borderColor = accentColor,
                     onClick = {
                         SoundPlayer.stopPreview()
-                        // Convert 12h display back to 24h
-                        val actualHour = when {
-                            !isPm && displayHour == 12 -> 0
-                            !isPm -> displayHour
-                            isPm && displayHour == 12 -> 12
-                            else -> displayHour + 12
-                        }
-
-                        val finalAlarm = initialAlarm?.copy(
-                            hour = actualHour,
-                            minute = selectedMinute,
-                            label = label.trim().ifEmpty { "Alarm" },
-                            repeatType = repeatType,
-                            customDays = customDays,
-                            soundName = selectedSound,
-                            vibrate = vibrate,
-                            snoozeEnabled = snoozeEnabled,
-                            backgroundType = backgroundType,
-                            backgroundMediaUri = backgroundMediaUri
-                        ) ?: AlarmModel(
-                            hour = actualHour,
-                            minute = selectedMinute,
-                            label = label.trim().ifEmpty { "Alarm" },
-                            isEnabled = true,
-                            repeatType = repeatType,
-                            customDays = customDays,
-                            soundName = selectedSound,
-                            vibrate = vibrate,
-                            snoozeEnabled = snoozeEnabled,
-                            backgroundType = backgroundType,
-                            backgroundMediaUri = backgroundMediaUri
-                        )
-
-                        onSave(finalAlarm)
+                        haptic.confirm()
+                        onSave(buildFinalAlarm())
                     }
                 ) {
                     Box(

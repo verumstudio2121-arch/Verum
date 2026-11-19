@@ -32,16 +32,33 @@ class AlarmReceiver : BroadcastReceiver() {
 
         when (action) {
             ACTION_DISMISS_ALARM -> {
-                AlarmService.stopAlarm(context)
-                // Handle repetition state in repository
-                val repo = AlarmRepository(context)
-                val alarm = repo.getAlarm(alarmId)
-                if (alarm != null) {
-                    if (alarm.repeatType == "Once") {
-                        repo.toggleAlarm(alarmId, false)
-                    } else {
-                        // Re-schedule next repeat occurrence
-                        repo.updateAlarm(alarm)
+                val prefs = PreferencesManager(context)
+                if (prefs.settings.value.mathChallengeEnabled) {
+                    val ringingIntent = Intent(context, AlarmRingingActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                Intent.FLAG_ACTIVITY_NO_USER_ACTION
+                        putExtra(AlarmRingingActivity.EXTRA_ALARM_ID, alarmId)
+                        putExtra(AlarmRingingActivity.EXTRA_ALARM_LABEL, label)
+                        putExtra(AlarmRingingActivity.EXTRA_ALARM_SOUND, sound)
+                        putExtra(AlarmRingingActivity.EXTRA_ALARM_VIBRATE, vibrate)
+                        putExtra(AlarmRingingActivity.EXTRA_ALARM_SNOOZE_ENABLED, snoozeEnabled)
+                    }
+                    try {
+                        context.startActivity(ringingIntent)
+                    } catch (_: Exception) {}
+                } else {
+                    AlarmService.stopAlarm(context)
+                    // Handle repetition state in repository
+                    val repo = AlarmRepository(context)
+                    val alarm = repo.getAlarm(alarmId)
+                    if (alarm != null) {
+                        if (alarm.repeatType == "Once") {
+                            repo.toggleAlarm(alarmId, false)
+                        } else {
+                            // Re-schedule next repeat occurrence
+                            repo.updateAlarm(alarm)
+                        }
                     }
                 }
             }

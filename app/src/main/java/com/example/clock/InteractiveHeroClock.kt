@@ -59,6 +59,7 @@ import com.example.ui.theme.GlassSurfaceElevated
 import com.example.ui.theme.InterfaceStyle
 import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalInterfaceStyle
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -200,45 +201,84 @@ private fun AnalogClockDial(
     val hourAngle = (hourFraction / 12f) * 360f
 
     val currentStyle = LocalInterfaceStyle.current
+    val isDark = LocalIsDarkTheme.current
+    val glassBorderBright = GlassBorderBright
 
-    val dialBackgroundBrush = remember(currentStyle, accentColor) {
-        when (currentStyle) {
-            InterfaceStyle.PURE_LIQUID_GLASS -> Brush.radialGradient(
-                colors = listOf(
-                    accentColor.copy(alpha = 0.22f),
-                    Color(0xFF222632).copy(alpha = 0.85f),
-                    Color(0xFF0F1118)
+    val dialBackgroundBrush = remember(currentStyle, accentColor, isDark) {
+        if (isDark) {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> Brush.radialGradient(
+                    colors = listOf(
+                        accentColor.copy(alpha = 0.22f),
+                        Color(0xFF222632).copy(alpha = 0.85f),
+                        Color(0xFF0F1118)
+                    )
                 )
-            )
-            InterfaceStyle.MINIMAL -> Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF111319),
-                    Color(0xFF08090C)
+                InterfaceStyle.MINIMAL -> Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF111319),
+                        Color(0xFF08090C)
+                    )
                 )
-            )
-            InterfaceStyle.MIX_LIQUID -> Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF1E212B).copy(alpha = 0.85f),
-                    Color(0xFF101217).copy(alpha = 0.95f),
-                    Color(0xFF0A0C10)
+                InterfaceStyle.MIX_LIQUID -> Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF1E212B).copy(alpha = 0.85f),
+                        Color(0xFF101217).copy(alpha = 0.95f),
+                        Color(0xFF0A0C10)
+                    )
                 )
-            )
+            }
+        } else {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> Brush.radialGradient(
+                    colors = listOf(
+                        Color.White,
+                        Color(0xFFF2F6FC),
+                        accentColor.copy(alpha = 0.14f)
+                    )
+                )
+                InterfaceStyle.MINIMAL -> Brush.radialGradient(
+                    colors = listOf(
+                        Color.White,
+                        Color(0xFFF1F5F9)
+                    )
+                )
+                InterfaceStyle.MIX_LIQUID -> Brush.radialGradient(
+                    colors = listOf(
+                        Color.White,
+                        Color(0xFFF4F7FB),
+                        Color(0xFFE6ECF5)
+                    )
+                )
+            }
         }
     }
 
-    val dialBorderBrush = remember(currentStyle, accentColor) {
+    val dialBorderBrush = remember(currentStyle, accentColor, isDark, glassBorderBright) {
         when (currentStyle) {
             InterfaceStyle.PURE_LIQUID_GLASS -> Brush.sweepGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.85f),
-                    accentColor.copy(alpha = 0.65f),
-                    Color.White.copy(alpha = 0.45f),
-                    accentColor.copy(alpha = 0.75f),
-                    Color.White.copy(alpha = 0.85f)
-                )
+                if (isDark) {
+                    listOf(
+                        Color.White.copy(alpha = 0.85f),
+                        accentColor.copy(alpha = 0.65f),
+                        Color.White.copy(alpha = 0.45f),
+                        accentColor.copy(alpha = 0.75f),
+                        Color.White.copy(alpha = 0.85f)
+                    )
+                } else {
+                    listOf(
+                        Color.White,
+                        accentColor.copy(alpha = 0.45f),
+                        Color(0xFFCBD5E1),
+                        accentColor.copy(alpha = 0.45f),
+                        Color.White
+                    )
+                }
             )
-            InterfaceStyle.MINIMAL -> androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.16f))
-            InterfaceStyle.MIX_LIQUID -> androidx.compose.ui.graphics.SolidColor(GlassBorderBright)
+            InterfaceStyle.MINIMAL -> androidx.compose.ui.graphics.SolidColor(
+                if (isDark) Color.White.copy(alpha = 0.16f) else Color(0xFFCBD5E1)
+            )
+            InterfaceStyle.MIX_LIQUID -> androidx.compose.ui.graphics.SolidColor(glassBorderBright)
         }
     }
 
@@ -250,13 +290,18 @@ private fun AnalogClockDial(
             .border(if (currentStyle == InterfaceStyle.MINIMAL) 1.dp else 1.5.dp, dialBorderBrush, CircleShape),
         contentAlignment = Alignment.Center
     ) {
+        val handColor = if (isDark) Color.White else Color(0xFF0F172A)
+        val majorTickColor = if (isDark) Color.White.copy(alpha = 0.5f) else Color(0xFF334155).copy(alpha = 0.65f)
+        val minorTickColor = if (isDark) Color.White.copy(alpha = 0.18f) else Color(0xFF64748B).copy(alpha = 0.30f)
+        val rimHighlightColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color(0xFF0F172A).copy(alpha = 0.06f)
+
         Canvas(modifier = Modifier.size(size)) {
             val center = Offset(this.size.width / 2f, this.size.height / 2f)
             val radius = this.size.width / 2f
 
             // Outer dial rim specular highlight
             drawCircle(
-                color = Color.White.copy(alpha = 0.05f),
+                color = rimHighlightColor,
                 radius = radius - 2f,
                 style = Stroke(width = 2f)
             )
@@ -265,7 +310,11 @@ private fun AnalogClockDial(
             val paint = android.graphics.Paint().apply {
                 isAntiAlias = true
                 textSize = density.run { 13.sp.toPx() }
-                color = android.graphics.Color.argb(200, 200, 205, 215)
+                color = if (isDark) {
+                    android.graphics.Color.argb(200, 200, 205, 215)
+                } else {
+                    android.graphics.Color.argb(215, 30, 41, 59)
+                }
                 textAlign = android.graphics.Paint.Align.CENTER
                 typeface = android.graphics.Typeface.create(
                     android.graphics.Typeface.DEFAULT,
@@ -287,7 +336,7 @@ private fun AnalogClockDial(
                 val isHourTick = i % 5 == 0
                 val tickLength = if (isHourTick) radius * 0.09f else radius * 0.045f
                 val tickWidth = if (isHourTick) 2.dp.toPx() else 1.dp.toPx()
-                val tickColor = if (isHourTick) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.18f)
+                val tickColor = if (isHourTick) majorTickColor else minorTickColor
 
                 val angleDeg = (i * 6.0) - 90.0
                 val angleRad = Math.toRadians(angleDeg)
@@ -309,11 +358,11 @@ private fun AnalogClockDial(
                 )
             }
 
-            // Hour Hand (White pill with depth)
+            // Hour Hand
             rotate(degrees = hourAngle, pivot = center) {
                 val hourLength = radius * 0.52f
                 drawLine(
-                    color = Color.White,
+                    color = handColor,
                     start = Offset(center.x, center.y + (radius * 0.06f)),
                     end = Offset(center.x, center.y - hourLength),
                     strokeWidth = 5.dp.toPx(),
@@ -321,11 +370,11 @@ private fun AnalogClockDial(
                 )
             }
 
-            // Minute Hand (Sleek white pill)
+            // Minute Hand
             rotate(degrees = minuteAngle, pivot = center) {
                 val minuteLength = radius * 0.74f
                 drawLine(
-                    color = Color.White.copy(alpha = 0.95f),
+                    color = handColor.copy(alpha = 0.95f),
                     start = Offset(center.x, center.y + (radius * 0.08f)),
                     end = Offset(center.x, center.y - minuteLength),
                     strokeWidth = 3.5.dp.toPx(),
@@ -333,7 +382,7 @@ private fun AnalogClockDial(
                 )
             }
 
-            // Second Hand (Vibrant Electric Blue needle with tail & counterweight)
+            // Second Hand (Vibrant Accent needle with tail & counterweight)
             rotate(degrees = secondAngle, pivot = center) {
                 val secondLength = radius * 0.88f
                 val tailLength = radius * 0.22f
@@ -347,7 +396,7 @@ private fun AnalogClockDial(
                     cap = StrokeCap.Round
                 )
 
-                // Blue pivot circle
+                // Accent pivot circle
                 drawCircle(
                     color = accentColor,
                     radius = 4.5.dp.toPx(),
@@ -355,9 +404,9 @@ private fun AnalogClockDial(
                 )
             }
 
-            // Central White Pin Cap
+            // Central Pin Cap
             drawCircle(
-                color = Color.White,
+                color = if (isDark) Color.White else Color.White,
                 radius = 2.dp.toPx(),
                 center = center
             )
@@ -383,45 +432,84 @@ private fun DigitalClockHero(
     val amPm = if (now.hour < 12) "AM" else "PM"
 
     val currentStyle = LocalInterfaceStyle.current
+    val isDark = LocalIsDarkTheme.current
+    val glassBorderBright = GlassBorderBright
 
-    val boxBackgroundBrush = remember(currentStyle, accentColor) {
-        when (currentStyle) {
-            InterfaceStyle.PURE_LIQUID_GLASS -> Brush.radialGradient(
-                colors = listOf(
-                    accentColor.copy(alpha = 0.20f),
-                    Color(0xFF222632).copy(alpha = 0.85f),
-                    Color(0xFF0F1118)
+    val boxBackgroundBrush = remember(currentStyle, accentColor, isDark) {
+        if (isDark) {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> Brush.radialGradient(
+                    colors = listOf(
+                        accentColor.copy(alpha = 0.20f),
+                        Color(0xFF222632).copy(alpha = 0.85f),
+                        Color(0xFF0F1118)
+                    )
                 )
-            )
-            InterfaceStyle.MINIMAL -> Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF111319),
-                    Color(0xFF08090C)
+                InterfaceStyle.MINIMAL -> Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF111319),
+                        Color(0xFF08090C)
+                    )
                 )
-            )
-            InterfaceStyle.MIX_LIQUID -> Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF1E212B).copy(alpha = 0.75f),
-                    Color(0xFF101217).copy(alpha = 0.95f),
-                    Color(0xFF0A0C10)
+                InterfaceStyle.MIX_LIQUID -> Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF1E212B).copy(alpha = 0.75f),
+                        Color(0xFF101217).copy(alpha = 0.95f),
+                        Color(0xFF0A0C10)
+                    )
                 )
-            )
+            }
+        } else {
+            when (currentStyle) {
+                InterfaceStyle.PURE_LIQUID_GLASS -> Brush.radialGradient(
+                    colors = listOf(
+                        Color.White,
+                        Color(0xFFF3F7FD),
+                        accentColor.copy(alpha = 0.12f)
+                    )
+                )
+                InterfaceStyle.MINIMAL -> Brush.radialGradient(
+                    colors = listOf(
+                        Color.White,
+                        Color(0xFFF8FAFC)
+                    )
+                )
+                InterfaceStyle.MIX_LIQUID -> Brush.radialGradient(
+                    colors = listOf(
+                        Color.White,
+                        Color(0xFFF3F6FB),
+                        Color(0xFFE9EFF8)
+                    )
+                )
+            }
         }
     }
 
-    val boxBorderBrush = remember(currentStyle, accentColor) {
+    val boxBorderBrush = remember(currentStyle, accentColor, isDark, glassBorderBright) {
         when (currentStyle) {
             InterfaceStyle.PURE_LIQUID_GLASS -> Brush.sweepGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.85f),
-                    accentColor.copy(alpha = 0.65f),
-                    Color.White.copy(alpha = 0.45f),
-                    accentColor.copy(alpha = 0.75f),
-                    Color.White.copy(alpha = 0.85f)
-                )
+                if (isDark) {
+                    listOf(
+                        Color.White.copy(alpha = 0.85f),
+                        accentColor.copy(alpha = 0.65f),
+                        Color.White.copy(alpha = 0.45f),
+                        accentColor.copy(alpha = 0.75f),
+                        Color.White.copy(alpha = 0.85f)
+                    )
+                } else {
+                    listOf(
+                        Color.White,
+                        accentColor.copy(alpha = 0.40f),
+                        Color(0xFFCBD5E1),
+                        accentColor.copy(alpha = 0.40f),
+                        Color.White
+                    )
+                }
             )
-            InterfaceStyle.MINIMAL -> androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.16f))
-            InterfaceStyle.MIX_LIQUID -> androidx.compose.ui.graphics.SolidColor(GlassBorderBright)
+            InterfaceStyle.MINIMAL -> androidx.compose.ui.graphics.SolidColor(
+                if (isDark) Color.White.copy(alpha = 0.16f) else Color(0xFFCBD5E1)
+            )
+            InterfaceStyle.MIX_LIQUID -> androidx.compose.ui.graphics.SolidColor(glassBorderBright)
         }
     }
 

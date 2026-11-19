@@ -140,13 +140,13 @@ fun StopwatchScreen(
                         Icon(
                             imageVector = if (isRunning) Icons.Default.Flag else Icons.Default.Refresh,
                             contentDescription = if (isRunning) "Lap" else "Reset",
-                            tint = if (canLapOrReset) Color.White else TextTertiary,
+                            tint = if (canLapOrReset) TextPrimary else TextTertiary,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = if (isRunning) "Lap" else "Reset",
-                            color = if (canLapOrReset) Color.White else TextTertiary,
+                            color = if (canLapOrReset) TextPrimary else TextTertiary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium
                         )

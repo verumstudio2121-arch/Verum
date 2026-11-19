@@ -136,19 +136,29 @@ class AlarmService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Dismiss action
-        val dismissIntent = Intent(this, AlarmReceiver::class.java).apply {
-            action = AlarmReceiver.ACTION_DISMISS_ALARM
-            putExtra(EXTRA_ALARM_ID, alarmId)
-        }
-        val dismissPendingIntent = PendingIntent.getBroadcast(
-            this,
-            alarmId.hashCode() + 1,
-            dismissIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val mathChallengeEnabled = PreferencesManager(applicationContext).settings.value.mathChallengeEnabled
 
-        // Snooze action
+        // Dismiss action: if Math Challenge is enabled, open the ringing screen to solve math instead of silent dismiss
+        val dismissActionPendingIntent = if (mathChallengeEnabled) {
+            fullScreenPendingIntent
+        } else {
+            val dismissIntent = Intent(this, AlarmReceiver::class.java).apply {
+                action = AlarmReceiver.ACTION_DISMISS_ALARM
+                putExtra(EXTRA_ALARM_ID, alarmId)
+                putExtra(EXTRA_ALARM_LABEL, label)
+                putExtra(EXTRA_ALARM_SOUND, sound)
+                putExtra(EXTRA_ALARM_VIBRATE, vibrate)
+                putExtra(EXTRA_ALARM_SNOOZE_ENABLED, snoozeEnabled)
+            }
+            PendingIntent.getBroadcast(
+                this,
+                alarmId.hashCode() + 1,
+                dismissIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        // Snooze action (always remains freely accessible)
         val snoozeIntent = Intent(this, AlarmReceiver::class.java).apply {
             action = AlarmReceiver.ACTION_SNOOZE_ALARM
             putExtra(EXTRA_ALARM_ID, alarmId)
@@ -166,7 +176,7 @@ class AlarmService : Service() {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle("HiTech Alarm: $label")
-            .setContentText("Alarm is ringing")
+            .setContentText(if (mathChallengeEnabled) "Solve math to dismiss alarm" else "Alarm is ringing")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -174,7 +184,11 @@ class AlarmService : Service() {
             .setAutoCancel(false)
             .setContentIntent(fullScreenPendingIntent)
             .setFullScreenIntent(fullScreenPendingIntent, true)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", dismissPendingIntent)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                if (mathChallengeEnabled) "Solve & Dismiss" else "Dismiss",
+                dismissActionPendingIntent
+            )
 
         if (snoozeEnabled) {
             builder.addAction(android.R.drawable.ic_popup_reminder, "Snooze", snoozePendingIntent)

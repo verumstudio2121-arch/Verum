@@ -54,6 +54,7 @@ import com.example.ui.theme.GlassBorder
 import com.example.ui.theme.GlassBorderBright
 import com.example.ui.theme.GlassSurface
 import com.example.ui.theme.GlassSurfaceElevated
+import com.example.ui.theme.LocalIsDarkTheme
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TextTertiary
@@ -120,10 +121,13 @@ fun ColorWheelBottomSheet(
         hsvToColor(hue, saturation, brightness)
     }
 
+    val isDark = LocalIsDarkTheme.current
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = DeepBlack,
+        containerColor = if (isDark) DeepBlack else Color(0xFFF6F8FC),
+        contentColor = TextPrimary,
         dragHandle = {
             Box(
                 modifier = Modifier
@@ -131,7 +135,7 @@ fun ColorWheelBottomSheet(
                     .width(42.dp)
                     .height(4.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.25f))
+                    .background(TextTertiary.copy(alpha = 0.45f))
             )
         }
     ) {
@@ -316,7 +320,7 @@ fun ColorWheelBottomSheet(
                             .background(swatchColor)
                             .border(
                                 width = if (isNear) 2.5.dp else 1.dp,
-                                color = if (isNear) Color.White else Color.White.copy(alpha = 0.3f),
+                                color = if (isNear) TextPrimary else TextTertiary.copy(alpha = 0.35f),
                                 shape = CircleShape
                             )
                             .clickable {
